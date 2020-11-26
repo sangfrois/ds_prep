@@ -42,8 +42,7 @@ def batch_parse(root, subject, ses=None, save_path=None):
 
     # List the files that have to be parsed
     dirs = list_sub(root, subject, ses)
-
-    # Main loop iterating through files in each dict key representing session
+    # loop iterating through files in each dict key representing session
     # returned by list_sub
     # for this loop, exp refers to session's name,
     # avoiding confusion with ses argument
@@ -204,7 +203,7 @@ def list_sub(root=None, sub=None, ses=None, type='.acq', show=False):
             raise Exception("Session path you gave does not exist")
 
     # list files in all sessions (or here, exp for experiments)
-    else:
+    elif os.path.isdir(os.path.join(root, sub, ses_list[0])) is True:
         for exp in ses_list:
             # re-initialize the list
             file_list = []
@@ -220,6 +219,16 @@ def list_sub(root=None, sub=None, ses=None, type='.acq', show=False):
         if show:
             for exp in ses_runs:
                 print(f"list of files for session {exp}: {ses_runs[exp]}")
+
+    # list files in a sub directory without sessions
+    else:
+        # push filenames in a list
+        for filename in os.listdir(os.path.join(root, sub)):
+            if filename.endswith(type):
+                file_list += [filename]
+        # store list
+        ses_runs['random_files'] = file_list
+
 
         # return a dictionary of sessions each containing a list of files
         return ses_runs

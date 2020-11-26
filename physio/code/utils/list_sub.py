@@ -7,13 +7,12 @@ import os
 import logging
 from CLI import _get_parser
 import sys
-import json
+
 
 LGR = logging.getLogger(__name__)
 
 
-def list_sub(root=None, sub=None, ses=None, type='.acq',
-             show=False, save=False):
+def list_sub(root=None, sub=None, ses=None, type='.acq', show=False):
     """
     List a subject's files.
 
@@ -23,19 +22,16 @@ def list_sub(root=None, sub=None, ses=None, type='.acq',
 
     Arguments
     ---------
-    root : PATH
+    root : str path
         root directory of dataset, like "home/user/dataset"
-    sub : str
+    sub : str BIDS code
         subject number, like "sub-01"
-    ses :  str
-        session name or number, like "ses-hcptrt1"
-    type : str of file type
+    ses : str BIDS code
+        session name or number, like "ses-001"
+    type : str
         what file are we looking for. Default is biosignals from biopac
     show : bool
-        if you want to print the dictionary
-    save : PATH
-        if you want to save the dictionary in json format
-
+        Defaults to False. Else, prints the output dict
     Returns
     -------
     ses_list :
@@ -76,7 +72,7 @@ def list_sub(root=None, sub=None, ses=None, type='.acq',
             raise Exception("Session path you gave does not exist")
 
     # list files in all sessions (or here, exp for experiments)
-    else:
+    elif os.path.isdir(os.path.join(root, sub, ses_list[0])) is True:
         for exp in ses_list:
             # re-initialize the list
             file_list = []
@@ -88,24 +84,19 @@ def list_sub(root=None, sub=None, ses=None, type='.acq',
             # save the file_list as dict item
             ses_runs[exp] = file_list
 
-        # sort dict entries numerically with ses ### code
-        ses_runs = {key: value for key, value in
-                    sorted(ses_runs.items(),
-                           key=lambda item: int(item[0][-3:]))}
         # display the lists (optional)
         if show:
             for exp in ses_runs:
-                print("list of files for session %s" % exp, ses_runs[exp])
+                print(f"list of files for session {exp}: {ses_runs[exp]}")
 
-        # Save the dict under temporary folder at sourcedata
-        # ERRATUM : change sourcedata for folder where i have write access
-        if save:
-            filename = os.path.join(save, 'metadata', f'{sub}_info.json')
-            if os.path.exists(os.path.join(save, 'metadata')) is False:
-                os.mkdir(os.path.join(save, 'metadata'))
-
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(ses_runs, f, indent=4)
+    # list files in a sub directory without sessions
+    else:
+        # push filenames in a list
+        for filename in os.listdir(os.path.join(root, sub)):
+            if filename.endswith(type):
+                file_list += [filename]
+        # store list
+        ses_runs['random_files'] = file_list
 
         # return a dictionary of sessions each containing a list of files
         return ses_runs
