@@ -42,10 +42,6 @@ def batch_parse(root, subject, ses=None, save_path=None):
 
     # List the files that have to be parsed
     dirs = list_sub(root, subject, ses)
-    # loop iterating through files in each dict key representing session
-    # returned by list_sub
-    # for this loop, exp refers to session's name,
-    # avoiding confusion with ses argument
     for exp in dirs:
         for file in dirs[exp]:
             # reading acq, resampling at 1000Hz
@@ -103,7 +99,7 @@ def batch_parse(root, subject, ses=None, save_path=None):
             sep = '_'
             name0 = sep.join([subject, exp, "prep-before-scan"])
             block0.plot(title=name0).get_figure().savefig(
-                                                     f"{save_path}{subject}/\n"
+                                                     f"{save_path}{subject}/"
                                                      f"{exp}/{name0}")
             # changing channel names
             for idx, run in enumerate(runs):
@@ -125,9 +121,9 @@ def batch_parse(root, subject, ses=None, save_path=None):
                         os.mkdir(Path(f"{save_path}{subject}/{exp}"))
 
                 # write HDF5
-                run.to_hdf(f"{save_path}{subject}/\n"
+                run.to_hdf(f"{save_path}{subject}/"
                            "{exp}/{name}.h5", key='bio_df')
-                Series(fs).to_hdf(f"{save_path}{subject}/\n"
+                Series(fs).to_hdf(f"{save_path}{subject}/"
                                   "{exp}/{name}.h5", key='sampling_rate')
 
                 # plot the run and save it
@@ -228,7 +224,6 @@ def list_sub(root=None, sub=None, ses=None, type='.acq', show=False):
                 file_list += [filename]
         # store list
         ses_runs['random_files'] = file_list
-
 
         # return a dictionary of sessions each containing a list of files
         return ses_runs
