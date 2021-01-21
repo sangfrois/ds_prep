@@ -82,6 +82,14 @@ def batch_parse(root, subject, ses=None, save_path=None):
                     # adjust the segmentation with padding
                     # parse start is end of run
                     parse_list += [(parse_start, parse_end)]
+            
+            # saving the dataframe under specified dir and file name
+            # deal with unexisting paths
+            if os.path.exists(f"{save_path}{subject}") is False:
+                os.mkdir(Path(f"{save_path}{subject}"))
+             
+            if os.path.exists(f"{save_path}{subject}/{exp}") is False:
+                os.mkdir(Path(f"{save_path}{subject}/{exp}"))
 
             # Parse  with the given indexes
             # Keep the first segment before scanner is turned on
@@ -103,7 +111,7 @@ def batch_parse(root, subject, ses=None, save_path=None):
             sep = '_'
             name0 = sep.join([subject, exp, "prep-before-scan"])
             block0.plot(title=name0).get_figure().savefig(
-                                                     f"{save_path}{subject}/\n"
+                                                     f"{save_path}{subject}/"
                                                      f"{exp}/{name0}")
             # changing channel names
             for idx, run in enumerate(runs):
@@ -117,18 +125,13 @@ def batch_parse(root, subject, ses=None, save_path=None):
                 sep = '_'
                 name = sep.join([subject, exp, f'task-run{idx+1:02}'])
 
-                # saving the dataframe under specified dir and file name
-                # deal with unexisting paths
-                if os.path.exists(f"{save_path}{subject}") is False:
-                    os.mkdir(Path(f"{save_path}{subject}"))
-                    if os.path.exists(f"{save_path}{subject}/{exp}") is False:
-                        os.mkdir(Path(f"{save_path}{subject}/{exp}"))
+               
 
                 # write HDF5
-                run.to_hdf(f"{save_path}{subject}/\n"
-                           "{exp}/{name}.h5", key='bio_df')
-                Series(fs).to_hdf(f"{save_path}{subject}/\n"
-                                  "{exp}/{name}.h5", key='sampling_rate')
+                run.to_hdf(f"{save_path}{subject}/"
+                           f"{exp}/{name}.h5", key='bio_df')
+                Series(fs).to_hdf(f"{save_path}{subject}/"
+                                  f"{exp}/{name}.h5", key='sampling_rate')
 
                 # plot the run and save it
                 run.plot(title=name).get_figure().savefig(
@@ -136,9 +139,9 @@ def batch_parse(root, subject, ses=None, save_path=None):
 
                 # notify user
                 print(name, 'in file ', file,
-                      '\nin experiment:', exp, 'is parsed.',
-                      '\nand saved at', save_path, '| sampling rate is :', fs,
-                      '\n', '~'*30)
+                      'in experiment:', exp, 'is parsed.',
+                      ' and saved at', save_path, '| sampling rate is :', fs,
+                      '~'*30)
 
     return dirs
 
