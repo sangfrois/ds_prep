@@ -1,4 +1,4 @@
-#!bin/bash
+#bin/bash
 # listdir of subjects
 # SUB is temp var
 # this saves a json with metadata returned by get_info.py
