@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # !/usr/bin/env python
 """another util for neuromod phys data conversion."""
-
+import pprintpp
 import sys
 from list_sub import list_sub
 import json
@@ -9,6 +9,7 @@ import logging
 from CLI import _get_parser2
 from pandas import read_csv
 import os
+import glob
 
 LGR = logging.getLogger(__name__)
 
@@ -41,11 +42,13 @@ def get_info(root=None, sub=None, ses=None, show=True, save=None):
         volumes per run, sourcedata file location
 
     Example :
-    >>> ses_runs_vols = get_info(root = "/home/user/dataset", sub = "sub-01")
+    >>> ses_runs_vols = get_info(root = "/home/user/dataset/", sub = "sub-01")
     """
     # list matches for a whole subject's dir
-    ses_runs_matches = list_sub(f"{root}/sourcedata/physio",
-                                sub, ses, type='.tsv', show=True)
+    ses_runs_matches = list_sub(f"{root}sourcedata/physio/",
+                                sub, ses, type='.tsv', show=show)
+    ses_info = list_sub(f"{root}sourcedata/physio/",
+                        sub, ses, type='.acq')
 
     # go to fmri matches and get entries for each run of a session
     nb_expected_runs = {}
@@ -53,15 +56,17 @@ def get_info(root=None, sub=None, ses=None, show=True, save=None):
     # iterate through sessions and get _matches.tsv with list_sub dict
     for exp in ses_runs_matches:
         df = read_csv(f"{root}/sourcedata/physio/{sub}/{exp}/"
-                      f"{ses_runs_matches[exp][0]}", sep='\t')  # first item
-
+                      f"{ses_runs_matches[exp][0]}", sep='\t', header=None)  # first item
+        
         # initialize some info we need
         idx = 1
         nb_expected_volumes_run = {}
         # get _bold.json filename in the matches.tsv we just read
         for filename in df.iloc[:, 0]:
             # strip part of root path
-            filename = str(filename).replace("/sourcedata/physio/", "")
+            #print(filename)
+            #filename = str(filename).replace("/sourcedata/physio/", "")
+            
 
             # troubleshoot unexisting paths
             if os.path.exists(f"{root}/{filename[:-7]}.json") is False:
@@ -78,31 +83,34 @@ def get_info(root=None, sub=None, ses=None, show=True, save=None):
                 # if there is no way to load the file, notify user
                 # NOTE : THIS HAS TO BE LOGGED ; SAVE THE LOG!
                 except:
-                    print('skiping', root, filename[:-7])
+                    pprintpp.pprint(f'skipping :{root}{filename[:-7]}')
                     continue
             # if everything went well we should be alright with this
             else:
                 with open(f"{root}/{filename[:-7]}.json") as f:
                     bold = json.load(f)
             # we want to GET THE NB OF VOLUMES
-            nb_expected_volumes_run[f'run-{idx:02}'
+            nb_expected_volumes_run[f'run-{idx:02d}'
                                     ] = bold["time"
                                              ]["samples"
                                                ]["AcquisitionNumber"][-1]
+            
             # not super elegant but does the trick - counts the nb of runs/ses
             idx += 1
-
+        
         # push all info in run in dict
-        nb_expected_runs[exp]['volumes_runs'] = nb_expected_volumes_run
+        #nb_expected_runs.update(
+        nb_expected_runs[exp] = {}
+        nb_expected_runs[exp] = nb_expected_volumes_run
         nb_expected_runs[exp]['expected_runs'] = len(df)
         nb_expected_runs[exp]['processed_runs'] = idx-1
+        nb_expected_runs[exp]['task'] = filename
         # strip part of the name
-        nb_expected_runs[exp]['in_file'] = str(df.iloc[[0], [1]]
-                                               )[:str(df.iloc[[0], [1]]
-                                                      ).find('\n0')].strip(" ")
-
+        name = ses_info[exp]
+        if name:
+            nb_expected_runs[exp]['in_file'] = name
     if show:
-        print(nb_expected_runs)
+        pprintpp.pprint(nb_expected_runs)
     if save is not None:
         if os.path.exists(f"{save}{sub}") is False:
             os.mkdir(f"{save}{sub}")
