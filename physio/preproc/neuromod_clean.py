@@ -95,7 +95,6 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
         eda_clean = eda_clean(eda, sampling_rate=sampling_rate)
         bio_df = pd.concat([bio_df, eda_clean], axis=1)
 
-
     return bio_df
 # ======================================================================
 # Photoplethysmograph (PPG)
@@ -115,11 +114,11 @@ def neuromod_ppg_clean(ppg_signal, sampling_rate=10000, method='nabian2018'):
 # =======================================================================
 
 
-def neuromod_ecg_clean(ecg_signal, trigger_pulse, sampling_rate=10000., method='biopac'):
+def neuromod_ecg_clean(ecg_signal, trigger_pulse,
+                       sampling_rate=10000., method='biopac'):
     """
-    Import my-changes ecg_clean abi and 4th order methods.
-
     Clean an ECG signal.
+
     Prepare a raw ECG signal for R-peak detection with the specified method.
 
     Parameters
@@ -130,8 +129,7 @@ def neuromod_ecg_clean(ecg_signal, trigger_pulse, sampling_rate=10000., method='
         The sampling frequency of `ecg_signal` (in Hz, i.e., samples/second).
         Defaults to 1000.
     method : str
-        The processing pipeline to apply. Can be one of 'neurokit' (default),
-        'fmri'
+        The processing pipeline to apply. Defaults to 'fmri'
     Returns
     -------
     array
@@ -208,18 +206,21 @@ def _ecg_clean_biopac(timeseries, sampling_rate=10000., tr=1.49):
     ECG Signal Processing During fMRI
     https://www.biopac.com/wp-content/uploads/app242x.pdf
     """
+    # Setting scanner sequence parameters
     slices = 60 # number of slice per volume (tr)
     mb = 4 # multiband factor of sequence
     Q = 100 # a value to play around with
     nyquist = float64(sampling_rate/2)
     notches = {'slices': slices / mb / tr,
                'tr': 1 / tr}
-
+    # find trigger timing
     triggers = timeseries[timeseries['Trigger'] > 4].index.values
-
-    filtered = signal_filter(timeseries['ECG'][trigger[1]:trigger[-1]],
+    # remove baseline wandering
+    filtered = signal_filter(timeseries['ECG'][triggers[1]:triggers[-1]],
                              sampling_rate=sampling_rate, lowcut = 2)
+    # Filtering at specific harmonics, with trigger timing info
     filtered = _comb_band_stop(notches, filtered, Q, sampling_rate)
+    # bandpass filtering
     ecg_clean = signal_filter(filtered, sampling_rate=sampling_rate, lowcut=2,
                               highcut=20, method='butter', order=5)
 
@@ -227,6 +228,11 @@ def _ecg_clean_biopac(timeseries, sampling_rate=10000., tr=1.49):
 
 def _comb_band_stop(notches, filtered, Q, sampling_rate):
     """
+    A serie of notch filters aligned with the scanner gradient's harmonics
+
+    Biopac Systems, Inc. Application Notes: application note 242
+    ECG Signal Processing During fMRI
+    https://www.biopac.com/wp-content/uploads/app242x.pdf
     """
     # band stoping each frequency specified with notches dict
     for notch in notches:
