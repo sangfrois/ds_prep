@@ -57,6 +57,7 @@ def volume_counter(root, subject, ses=None, save_path=None):
     # for this loop, exp refers to session's name,
     # avoiding confusion with ses argument
     for exp in dirs:
+        print(exp)
         for file in dirs[exp]:
             # reading acq
             bio_df, fs = nk.read_acqknowledge(os.path.join(
@@ -105,22 +106,24 @@ def volume_counter(root, subject, ses=None, save_path=None):
             # Create tuples with the given indexes
             # First block is always from first trigger to first parse
             block1 = (start, parse_list[0][0])
-
+            
             # runs is a list of tuples specifying runs in the session
             runs = []
             # push the resulting tuples (run_start, run_end)
             runs += [block1]
             for i in range(0, len(parse_list)-1):
                 if i == len(parse_list):
-                    runs += (parse_list[i][1], end)
+                    runs += [(parse_list[i][1], end)]
                     break
                 else:
-                    runs += (parse_list[i][1], parse_list[1+i][0])
+                    runs += [(parse_list[i][1], parse_list[1+i][0])]
+            
             # compute the number of trigger/volumes in the run
-            for i, elem in enumerate(runs):
-                runs[i] = (elem[1]-elem[0]/fs)/1.49
+            for i in range(0,len(runs)):
+                runs[i] = round(((runs[i][1]-runs[i][0])/fs)/1.49)+1
 
             ses_runs[exp] = runs
+    return ses_runs
 
 def batch_parse(root, subject, ses=None, save_path=None):
     """
