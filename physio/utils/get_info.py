@@ -107,6 +107,7 @@ def volume_counter(root, subject, ses=None):
                 ses_runs[exp] = [runs]
             else:
                 ses_runs[exp].append(runs)
+
     return ses_runs
 
 
@@ -190,7 +191,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                 with open(f"{root}/{filename[:-7]}.json") as f:
                     bold = json.load(f)
             # we want to GET THE NB OF VOLUMES in the _bold.json of a given run
-            nb_expected_volumes_run[f'run-{idx:02d}'
+            nb_expected_volumes_run[f'{idx:02d}'
                                     ] = bold["time"
                                              ]["samples"
                                                ]["AcquisitionNumber"][-1]
@@ -230,6 +231,8 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                                     f"{root}sourcedata/physio/", sub, ses=exp)
                         print("finished counting volumes in physio file for:",
                               exp)
+                        for i, run in enumerate(vol_in_biopac[exp]):
+                            vol_in_biopac[exp] = {f"run-{i+1:02d}": run}
                         nb_expected_runs[exp][
                                       'recorded_triggers'] = vol_in_biopac[exp]
                     # skip the session if we did not find the _bold.json
