@@ -231,10 +231,12 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                                     f"{root}sourcedata/physio/", sub, ses=exp)
                         print("finished counting volumes in physio file for:",
                               exp)
+                        run_dict = {}
                         for i, run in enumerate(vol_in_biopac[exp]):
-                            vol_in_biopac[exp] = {f"run-{i+1:02d}": run}
+                            run_dict.update({f"run-{i+1:02d}": run})
+
                         nb_expected_runs[exp][
-                                      'recorded_triggers'] = vol_in_biopac[exp]
+                                      'recorded_triggers'] = run_dict
                     # skip the session if we did not find the _bold.json
                     except KeyError:
                         continue
