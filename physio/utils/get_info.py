@@ -207,9 +207,9 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
         nb_expected_runs[exp] = nb_expected_volumes_run
         nb_expected_runs[exp]['expected_runs'] = len(df)
         nb_expected_runs[exp]['processed_runs'] = idx-1  # counter is used here
-        task = filename.rfind(f"{sub}_{exp}_")
+        task = filename.rfind(f"{exp}_")+8
         task_end = filename.rfind("_")
-        nb_expected_runs[exp]['task'] = filename[task-1:task_end]
+        nb_expected_runs[exp]['task'] = filename[task:task_end]
         # save the name
         name = ses_info[exp]
         if name:
