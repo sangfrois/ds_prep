@@ -166,9 +166,11 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
         # get _bold.json filename in the matches.tsv we just read
         for filename in df.iloc[:, 0]:
             # troubleshoot unexisting paths present in the tsv file
+            # -7 because the end is .nii.gz
             if os.path.exists(f"{root}/{filename[:-7]}.json") is False:
                 try:
                     # maybe there are runs to account for in the name
+                    # strip -11 because bold.nii.gz
                     if os.path.exists(f"{root}/{filename[:-11]}"
                                       "run-01_bold.json") is False:
                         with open(f"{root}/{filename[:-11]}"
@@ -187,7 +189,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
             else:
                 with open(f"{root}/{filename[:-7]}.json") as f:
                     bold = json.load(f)
-            # we want to GET THE NB OF VOLUMES in the _bold.json
+            # we want to GET THE NB OF VOLUMES in the _bold.json of a given run
             nb_expected_volumes_run[f'run-{idx:02d}'
                                     ] = bold["time"
                                              ]["samples"
@@ -204,7 +206,9 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
         nb_expected_runs[exp] = nb_expected_volumes_run
         nb_expected_runs[exp]['expected_runs'] = len(df)
         nb_expected_runs[exp]['processed_runs'] = idx-1  # counter is used here
-        nb_expected_runs[exp]['task'] = filename
+        task = filename.rfind(f"{sub}_{exp}_")
+        task_end = filename.rfind("_")
+        nb_expected_runs[exp]['task'] = filename[task-1:task_end]
         # save the name
         name = ses_info[exp]
         if name:

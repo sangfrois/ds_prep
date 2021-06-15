@@ -106,7 +106,7 @@ def volume_counter(root, subject, ses=None, save_path=None):
             # Create tuples with the given indexes
             # First block is always from first trigger to first parse
             block1 = (start, parse_list[0][0])
-            
+
             # runs is a list of tuples specifying runs in the session
             runs = []
             # push the resulting tuples (run_start, run_end)
@@ -114,12 +114,12 @@ def volume_counter(root, subject, ses=None, save_path=None):
             for i in range(0, len(parse_list)):
                 try:
                     runs.append((parse_list[i][1], parse_list[1+i][0]))
-                    
+
                 except IndexError:
                     runs.append((parse_list[i][1], end))
-            
+
             # compute the number of trigger/volumes in the run
-            for i in range(0,len(runs)):
+            for i in range(0, len(runs)):
                 runs[i] = round(((runs[i][1]-runs[i][0])/fs)/1.49)+1
             if exp not in ses_runs:
                 ses_runs[exp] = runs
