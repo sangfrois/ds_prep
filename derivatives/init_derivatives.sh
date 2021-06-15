@@ -16,7 +16,7 @@ ds_name=$(basename $bids_path)
 
 
 if [ -n "$remote" ] ; then
-  datalad install -s $remote $derivative_path
+  datalad install -d $bids_path -s $remote $derivative_path
   # configure git remote
   #datalad siblings -s origin -d $derivative_path --url $remote add
 
@@ -25,7 +25,9 @@ if [ -n "$remote" ] ; then
 
   pushd $derivative_path
 
-  datalad save -m 'add default gitattributes' .gitattributes
+  git add .gitattributes
+  git commit -m 'initial commit'
+  git branch -M main
 
   # configure s3 bucket
   bucket_name="cneuromod."${ds_name}".derivatives."$derivative
@@ -36,6 +38,9 @@ if [ -n "$remote" ] ; then
 
   #push the derivatives to git
   datalad publish -d $derivative_path --to origin
-else 
+else
   datalad create -d $bids_path $derivative_path
 fi
+
+cp ${BASH_SOURCE%/*}/.gitattributes_default $derivative_path/.gitattributes
+datalad save -m 'add default gitattributes' .gitattributes
