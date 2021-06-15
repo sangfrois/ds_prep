@@ -48,7 +48,9 @@ def volume_counter(root, subject, ses=None):
     # avoiding confusion with ses argument
     for exp in dirs:
         print("counting volumes in physio file for:", exp)
-        for file in dirs[exp].sort():
+        if dirs[exp] is not None:
+            dirs[exp] = dirs[exp].sort()
+        for file in dirs[exp]:
             # reading acq
             bio_df, fs = read_acqknowledge(os.path.join(
                                        root, subject, exp, file))  # resampling
