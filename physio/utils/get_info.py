@@ -48,7 +48,7 @@ def volume_counter(root, subject, ses=None):
     # avoiding confusion with ses argument
     for exp in dirs:
         print("counting volumes in physio file for:", exp)
-        for file in dirs[exp]:
+        for file in dirs[exp].sort():
             # reading acq
             bio_df, fs = read_acqknowledge(os.path.join(
                                        root, subject, exp, file))  # resampling
@@ -245,7 +245,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                       f"{root}sourcedata/physio/{sub}/{exp}/")
 
                 print(f"skipping :{exp} for task {filename}")
-        print(vol_in_biopac)
+        print(run_dict)
         print('~'*30)
 
     if show:
