@@ -9,7 +9,6 @@ import logging
 from CLI import _get_parser2
 from pandas import read_csv
 import os
-import glob
 from neurokit2 import read_acqknowledge
 
 LGR = logging.getLogger(__name__)
@@ -89,7 +88,7 @@ def volume_counter(root, subject, ses=None):
             # Create tuples with the given indexes
             # First block is always from first trigger to first parse
             block1 = (start, parse_list[0][0])
-            
+
             # runs is a list of tuples specifying runs in the session
             runs = []
             # push the resulting tuples (run_start, run_end)
@@ -97,12 +96,12 @@ def volume_counter(root, subject, ses=None):
             for i in range(0, len(parse_list)):
                 try:
                     runs.append((parse_list[i][1], parse_list[1+i][0]))
-                    
+
                 except IndexError:
                     runs.append((parse_list[i][1], end))
-            
+
             # compute the number of trigger/volumes in the run
-            for i in range(0,len(runs)):
+            for i in range(0, len(runs)):
                 runs[i] = round(((runs[i][1]-runs[i][0])/fs)/1.49)+1
             if exp not in ses_runs:
                 ses_runs[exp] = [runs]
@@ -111,7 +110,8 @@ def volume_counter(root, subject, ses=None):
     return ses_runs
 
 
-def get_info(root=None, sub=None, ses=None, count_vol=False, show=True, save=None):
+def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
+             save=None):
     """
     Get all volumes taken for a sub.
 
@@ -126,11 +126,14 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True, save=Non
     sub : str BIDS CODE
         subject number, like "sub-01"
     ses : str BIDS CODE
-        session name or number, like "ses-hcptrt1"
+        session name or number, like "ses-001"
+    count_vol : bool
+        Defaults to False. Specify if you want to count triggers in physio file
     show : bool
-        if you want to print the dictionary
+        Defaults to True. Specify if you want to print the dictionary
     save : path
-        if you want to save the dictionary in json format
+        Defaults to None and will save at root. Specify where you want to save
+        the dictionary in json format
 
     Returns
     -------
@@ -149,27 +152,23 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True, save=Non
 
     # go to fmri matches and get entries for each run of a session
     nb_expected_runs = {}
-    
-    
+
     # iterate through sessions and get _matches.tsv with list_sub dict
     for exp in ses_runs_matches:
         print(exp)
         df = read_csv(f"{root}/sourcedata/physio/{sub}/{exp}/"
-                      f"{ses_runs_matches[exp][0]}", sep='\t', header=None)  # first item
-        
-        # initialize some info we need
+                      f"{ses_runs_matches[exp][0]}", sep='\t', header=None)
+    # first item of the dictionary returned by list_sub is a tsv file
+
+        # initialize a counter and a dictionary
         idx = 1
         nb_expected_volumes_run = {}
         # get _bold.json filename in the matches.tsv we just read
         for filename in df.iloc[:, 0]:
-            # strip part of root path
-            #print(filename)
-            #filename = str(filename).replace("/sourcedata/physio/", "")
-            
-
-            # troubleshoot unexisting paths
+            # troubleshoot unexisting paths present in the tsv file
             if os.path.exists(f"{root}/{filename[:-7]}.json") is False:
                 try:
+                    # maybe there are runs to account for in the name
                     if os.path.exists(f"{root}/{filename[:-11]}"
                                       "run-01_bold.json") is False:
                         with open(f"{root}/{filename[:-11]}"
@@ -184,52 +183,63 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True, save=Non
                 except:
                     pprintpp.pprint(f'skipping :{root}{filename[:-7]}')
                     continue
-            # if everything went well we should be alright with this
+            # if everything went well we should be alright with this filename
             else:
                 with open(f"{root}/{filename[:-7]}.json") as f:
                     bold = json.load(f)
-            # we want to GET THE NB OF VOLUMES
+            # we want to GET THE NB OF VOLUMES in the _bold.json
             nb_expected_volumes_run[f'run-{idx:02d}'
                                     ] = bold["time"
                                              ]["samples"
                                                ]["AcquisitionNumber"][-1]
-            
+
             # not super elegant but does the trick - counts the nb of runs/ses
             idx += 1
+        # print the thing to show progress
         print(f"finished accessing json info for: {exp}")
         print(nb_expected_volumes_run)
         # push all info in run in dict
         nb_expected_runs[exp] = {}
-        
+        # the nb of expected volumes in each run of the session (embedded dict)
         nb_expected_runs[exp] = nb_expected_volumes_run
         nb_expected_runs[exp]['expected_runs'] = len(df)
-        nb_expected_runs[exp]['processed_runs'] = idx-1
+        nb_expected_runs[exp]['processed_runs'] = idx-1  # counter is used here
         nb_expected_runs[exp]['task'] = filename
         # save the name
         name = ses_info[exp]
         if name:
             nb_expected_runs[exp]['in_file'] = name
-        # check if biopac file exist, notify the user that we won't count volumes
-        
-        try:
-            if os.path.isfile(f"{root}sourcedata/physio/{sub}/{exp}/{name[0]}") is False:
-                count_vol=False
-                print('cannot find session directory for sourcedata :', f"{root}sourcedata/physio/{sub}/{exp}/{name[0]}")
-            else:
-                try:
-                    count_vol=True
-                    vol_in_biopac = volume_counter(f"{root}sourcedata/physio/",sub, ses=exp)
-                    print("finished counting volumes in physio file for:", exp)
-                    nb_expected_runs[exp]['recorded_triggers'] = vol_in_biopac[exp]
-                except KeyError:
-                    continue
-        except IndexError:
-            print('Directory is empty: ',f"{root}sourcedata/physio/{sub}/{exp}/")
-            count_vol=False
-            print(f"skipping :{exp} for task {filename}")
+
+        if count_vol:
+            # check if biopac file exist, notify the user that we won't
+            # count volumes
+            try:
+                # do not count the triggers in phys file if no physfile
+                if os.path.isfile(
+                     f"{root}sourcedata/physio/{sub}/{exp}/{name[0]}") is False:
+                    count_vol = False
+                    print('cannot find session directory for sourcedata :',
+                          f"{root}sourcedata/physio/{sub}/{exp}/{name[0]}")
+                else:
+                    # count the triggers in physfile otherwise
+                    try:
+                        vol_in_biopac = volume_counter(
+                                    f"{root}sourcedata/physio/", sub, ses=exp)
+                        print("finished counting volumes in physio file for:",
+                              exp)
+                        nb_expected_runs[exp][
+                                      'recorded_triggers'] = vol_in_biopac[exp]
+                    # skip the session if we did not find the _bold.json
+                    except KeyError:
+                        continue
+            except IndexError:
+                print('Directory is empty: ',
+                      f"{root}sourcedata/physio/{sub}/{exp}/")
+
+                print(f"skipping :{exp} for task {filename}")
         print(vol_in_biopac)
-        print('~'*30)       
-       
+        print('~'*30)
+
     if show:
         pprintpp.pprint(nb_expected_runs)
     if save is not None:
@@ -238,6 +248,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True, save=Non
         with open(f"{save}{sub}/{sub}_volumes_all-ses-runs.json", 'w') as fp:
             json.dump(nb_expected_runs, fp)
     return nb_expected_runs
+
 
 def _main(argv=None):
     options = _get_parser2().parse_args(argv)
