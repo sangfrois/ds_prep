@@ -91,7 +91,7 @@ def neuromod_ppg_process(ppg_raw, sampling_rate=10000):
         - *"PPG_Rate"*: the heart rate as measured based on PPG peaks.
         - *"PPG_Peaks"*: the PPG peaks marked as "1" in a list of zeros.
     info : dict
-        containing list of peaks
+        containing list of intervals between peaks
     """
     # Prepare signal for processing
     ppg_clean = neuromod_ppg_clean(ppg_raw, sampling_rate=sampling_rate)

@@ -6,7 +6,7 @@ Neuromod cleaning utilities
 import numpy as np
 import pandas as pd
 from neurokit2 import eda_clean, rsp_clean, ppg_clean
-from neurokit2 import signal_filter, as_vector
+from neurokit2 import signal_smooth, as_vector
 from scipy import signal
 
 
@@ -104,9 +104,8 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
 def neuromod_ppg_clean(ppg_signal, sampling_rate=10000, method='nabian2018'):
     ppg_clean = ppg_clean(ppg_signal, sampling_rate=sampling_rate,
                           method=method)
-
-    ppg_clean = signal_filter(ppg_clean, sampling_rate=sampling_rate,
-                              lowcut=0.1, highcut=4)
+    # local regression smoothing
+    ppg_clean = signal_smooth(ppg_clean, method='loess', alpha=0.2)
 
     return ppg_clean
 # ======================================================================

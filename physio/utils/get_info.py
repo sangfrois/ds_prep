@@ -217,7 +217,6 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                 # do not count the triggers in phys file if no physfile
                 if os.path.isfile(
                      f"{root}sourcedata/physio/{sub}/{exp}/{name[0]}") is False:
-                    count_vol = False
                     print('cannot find session directory for sourcedata :',
                           f"{root}sourcedata/physio/{sub}/{exp}/{name[0]}")
                 else:
@@ -246,7 +245,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
         if os.path.exists(f"{save}{sub}") is False:
             os.mkdir(f"{save}{sub}")
         with open(f"{save}{sub}/{sub}_volumes_all-ses-runs.json", 'w') as fp:
-            json.dump(nb_expected_runs, fp)
+            json.dump(nb_expected_runs, fp, sort_keys=True)
     return nb_expected_runs
 
 
