@@ -110,19 +110,21 @@ def volume_counter(root, subject, ses=None, save_path=None):
             # runs is a list of tuples specifying runs in the session
             runs = []
             # push the resulting tuples (run_start, run_end)
-            runs += [block1]
-            for i in range(0, len(parse_list)-1):
-                if i == len(parse_list):
-                    runs += [(parse_list[i][1], end)]
-                    break
-                else:
-                    runs += [(parse_list[i][1], parse_list[1+i][0])]
+            runs.append(block1)
+            for i in range(0, len(parse_list)):
+                try:
+                    runs.append((parse_list[i][1], parse_list[1+i][0]))
+                    
+                except IndexError:
+                    runs.append((parse_list[i][1], end))
             
             # compute the number of trigger/volumes in the run
             for i in range(0,len(runs)):
                 runs[i] = round(((runs[i][1]-runs[i][0])/fs)/1.49)+1
-
-            ses_runs[exp] = runs
+            if exp not in ses_runs:
+                ses_runs[exp] = runs
+            else:
+                ses_runs[exp].append(runs)
     return ses_runs
 
 def batch_parse(root, subject, ses=None, save_path=None):

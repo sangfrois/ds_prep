@@ -89,6 +89,10 @@ def _get_parser2():
                           help='Specify alongside \"-heur\". Code of '
                                'session to process.',
                           default=None)
+    optional.add_argument('-count_vol', '--count_volumes_biopac',
+                          dest='count_vol',
+                          help='Specify whether you want to count the triggers',
+                          default=False)
 
     optional.add_argument('-show', '--show-dict',
                           dest='show',
