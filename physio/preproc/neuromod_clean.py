@@ -138,7 +138,7 @@ def neuromod_ecg_clean(ecg_signal, trigger_pulse,
     if method in ["schmidt", "schmidt2018"]:
         clean = _ecg_clean_schmidt(ecg_signal, sampling_rate)
     if method in ["biopac", "fmri"]:
-        timeseries = pd.DataFrame(columns=['ECG','Trigger', 'seconds')
+        timeseries = pd.DataFrame(columns=['ECG','Trigger', 'seconds'])
         time = np.arange(len(ecg_signal))/sampling_rate
         timeseries['ECG'] = ecg_signal
         timeseries['Trigger'] = trigger_pulse

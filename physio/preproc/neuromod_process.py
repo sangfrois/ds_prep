@@ -27,7 +27,7 @@ def neuromod_bio_process(tsv=None, h5=None, df=None, sampling_rate=10000):
                          "parameters: tsv or df")
 
     if tsv is not None:
-        df = pd.read_csv(tsv, sep='t', compression='gz')
+        df = pd.read_csv(tsv, sep='\t', compression='gzip')
 
     if h5 is not None:
         df = pd.read_hdf(h5, key='bio_df')
