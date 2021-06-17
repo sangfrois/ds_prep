@@ -24,14 +24,14 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
         directory of BIDSified biosignal recording
     h5 :
         directory of h5 file
-    df (optional) :
+    data (optional) :
         pandas DataFrame object
     """
 
     # check input and sanitize
-    if data and tsv is None:
-        raise ValueError("You have to give at least one of the two \n"
-                         "parameters: tsv or df")
+    #if data and tsv is None:
+        #raise ValueError("You have to give at least one of the two \n"
+                         #"parameters: tsv or df")
 
     if tsv is not None:
         data = pd.read_csv(tsv, sep='t', compression='gz')
