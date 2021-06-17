@@ -102,12 +102,12 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
 
 
 def neuromod_ppg_clean(ppg_signal, sampling_rate=10000, method='nabian2018'):
-    ppg_clean = ppg_clean(ppg_signal, sampling_rate=sampling_rate,
-                          method=method)
+    ppg_cleaned = ppg_clean(ppg_signal, sampling_rate=sampling_rate,
+                            method=method)
     # local regression smoothing
-    ppg_clean = signal_smooth(ppg_clean, method='loess', alpha=0.2)
+    ppg_cleaned = signal_smooth(ppg_cleaned, method='loess', alpha=0.2)
 
-    return ppg_clean
+    return ppg_cleaned
 # ======================================================================
 # Electrocardiogram (ECG)
 # =======================================================================
