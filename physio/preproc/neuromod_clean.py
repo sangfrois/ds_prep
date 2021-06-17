@@ -57,6 +57,8 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
         ecg = None
     if "PPG" in data.keys():
         ppg = data["PPG"]
+    else:
+        ppg = None
 
     # Keep unkown columns in data
     cols = ["ECG", "EKG", "PPG", "RSP", "EDA"]
