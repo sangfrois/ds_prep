@@ -5,8 +5,7 @@ Neuromod cleaning utilities
 """
 import numpy as np
 import pandas as pd
-from neurokit2 import eda_clean, rsp_clean, ppg_clean
-from neurokit2 import signal_smooth, as_vector
+import neurokit2 as nk
 from scipy import signal
 
 
@@ -35,11 +34,11 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
                          "parameters: tsv or df")
 
     if tsv is not None:
-        data = read_csv(tsv, sep='t', compression='gz')
+        data = pd.read_csv(tsv, sep='t', compression='gz')
 
     if h5 is not None:
-        df = read_hdf(h5, key='bio_df')
-        sampling_rate = read_hdf(h5, key='sampling_rate')
+        data = pd.read_hdf(h5, key='bio_df')
+        sampling_rate = pd.read_hdf(h5, key='sampling_rate')
 
     # sanitize by columns
     if "RSP" in data.keys():
@@ -68,31 +67,31 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
         keep = None
 
     # initialize output
-    bio_df = DataFrame()
+    bio_df = pd.DataFrame()
 
     # sanitize input signals
     # PPG_
     if ppg is not None:
-        ppg = as_vector(ppg)
+        ppg = nk.as_vector(ppg)
         ppg_clean = neuromod_ppg_clean(ppg, sampling_rate=sampling_rate)
 
         bio_df = pd.concat([bio_df, ppg_clean], axis=1)
     # ECG
     if ecg is not None:
-        ecg = as_vector(ecg)
+        ecg = nk.as_vector(ecg)
         ecg_clean = neuromod_ecg_clean(ecg, sampling_rate=sampling_rate)
         bio_df = pd.concat([bio_df, ecg_clean], axis=1)
 
     # RSP
     if rsp is not None:
-        rsp = as_vector(rsp)
-        rsp_clean = rsp_clean(rsp, sampling_rate=sampling_rate)
+        rsp = nk.as_vector(rsp)
+        rsp_clean = nk.rsp_clean(rsp, sampling_rate=sampling_rate)
         bio_df = pd.concat([bio_df, rsp_clean], axis=1)
 
     # EDA
     if eda is not None:
-        eda = as_vector(eda)
-        eda_clean = eda_clean(eda, sampling_rate=sampling_rate)
+        eda = nk.as_vector(eda)
+        eda_clean = nk.eda_clean(eda, sampling_rate=sampling_rate)
         bio_df = pd.concat([bio_df, eda_clean], axis=1)
 
     return bio_df
@@ -102,10 +101,10 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
 
 
 def neuromod_ppg_clean(ppg_signal, sampling_rate=10000, method='nabian2018'):
-    ppg_cleaned = ppg_clean(ppg_signal, sampling_rate=sampling_rate,
-                            method=method)
+    ppg_cleaned = nk.ppg_clean(ppg_signal, sampling_rate=sampling_rate,
+                               method=method)
     # local regression smoothing
-    ppg_cleaned = signal_smooth(ppg_cleaned, method='loess', alpha=0.2)
+    ppg_cleaned = nk.signal_smooth(ppg_cleaned, method='loess', alpha=0.2)
 
     return ppg_cleaned
 # ======================================================================
@@ -190,8 +189,8 @@ def _ecg_clean_schmidt(ecg_signal, sampling_rate=16000):
         # compute the median of walsh averages array
         ecg_clean[current_sample] = np.median(walsh_arr)
     # Bandpass filtering
-    ecg_clean = signal_filter(ecg_clean, lowcut=0.05, highcut=45,
-                              method='bessel', order=5)
+    ecg_clean = nk.signal_filter(ecg_clean, lowcut=0.05, highcut=45,
+                                 method='bessel', order=5)
 
     return ecg_clean
 
@@ -215,13 +214,13 @@ def _ecg_clean_biopac(timeseries, sampling_rate=10000., tr=1.49):
     # find trigger timing
     triggers = timeseries[timeseries['Trigger'] > 4].index.values
     # remove baseline wandering
-    filtered = signal_filter(timeseries['ECG'][triggers[1]:triggers[-1]],
-                             sampling_rate=sampling_rate, lowcut = 2)
+    filtered = nk.signal_filter(timeseries['ECG'][triggers[1]:triggers[-1]],
+                                sampling_rate=sampling_rate, lowcut = 2)
     # Filtering at specific harmonics, with trigger timing info
     filtered = _comb_band_stop(notches, filtered, Q, sampling_rate)
     # bandpass filtering
-    ecg_clean = signal_filter(filtered, sampling_rate=sampling_rate, lowcut=2,
-                              highcut=20, method='butter', order=5)
+    ecg_clean = nk.signal_filter(filtered, sampling_rate=sampling_rate, lowcut=2,
+                                 highcut=20, method='butter', order=5)
 
     return filtered
 
