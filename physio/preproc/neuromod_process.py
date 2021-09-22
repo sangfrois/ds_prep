@@ -8,9 +8,11 @@ import pandas as pd
 # high-level processing utils
 from neurokit2 import eda_process, rsp_process, ecg_peaks,  ppg_findpeaks
 # signal utils
-from neurokit2 import signal_rate, signal_fixpeaks, signal_formatpeaks
+from neurokit2.misc import as_vector
+from neurokit2 import signal_rate, signal_fixpeaks, signal_detrend
+from neurokit2.signal.signal_formatpeaks import _signal_from_indices
 # home brewed cleaning utils
-from neuromod_clean import neuromod_ppg_clean, neuromod_ecg_clean
+from neuromod_clean import neuromod_ecg_clean
 
 
 def neuromod_bio_process(tsv=None, h5=None, df=None, sampling_rate=10000):
@@ -22,9 +24,9 @@ def neuromod_bio_process(tsv=None, h5=None, df=None, sampling_rate=10000):
     df (optional) :
         pandas DataFrame object
     """
-    if df and tsv and h5 is None:
-        raise ValueError("You have to give at least one of the two \n"
-                         "parameters: tsv or df")
+    #if df and tsv and h5 is None:
+        #raise ValueError("You have to give at least one of the two \n"
+            #             "parameters: tsv or df")
 
     if tsv is not None:
         df = pd.read_csv(tsv, sep='\t', compression='gzip')
@@ -33,38 +35,40 @@ def neuromod_bio_process(tsv=None, h5=None, df=None, sampling_rate=10000):
         df = pd.read_hdf(h5, key='bio_df')
         sampling_rate = pd.read_hdf(h5, key='sampling_rate')
     # initialize returned objects
-    bio_info = {}
-    bio_df = pd.DataFrame()
+    if df is not None:
 
-    # initialize each signals
-    ppg_raw = df["PPG"]
-    rsp_raw = df["RSP"]
-    eda_raw = df["EDA"]
-    ecg_raw = df["ECG"]
+        bio_info = {}
+        bio_df = pd.DataFrame()
 
-    # ppg
-    ppg, ppg_info = neuromod_ppg_process(ppg_raw, sampling_rate=sampling_rate)
-    bio_info.update(ppg_info)
-    bio_df = pd.concat([bio_df, ppg], axis=1)
+        # initialize each signals
+        ppg_raw = df["PPG"]
+        rsp_raw = df["RSP"]
+        eda_raw = df["EDA"]
+        ecg_raw = df["ECG"]
 
-    # ecg
-    ecg, ecg_info = neuromod_ecg_process(ecg_raw, sampling_rate=sampling_rate)
-    bio_info.update(ecg_info)
-    bio_df = pd.concat([bio_df, ecg], axis=1)
+        # ppg
+        ppg, ppg_info = neuromod_ppg_process(ppg_raw, sampling_rate=sampling_rate)
+        bio_info.update(ppg_info)
+        bio_df = pd.concat([bio_df, ppg], axis=1)
 
-    #  rsp
-    rsp, rsp_info = rsp_process(rsp_raw, sampling_rate=sampling_rate,
-                                method='khodadad2018')
-    bio_info.update(rsp_info)
-    bio_df = pd.concat([bio_df, rsp], axis=1)
+        # ecg
+       # ecg, ecg_info = neuromod_ecg_process(ecg_raw, sampling_rate=sampling_rate)
+        #bio_info.update(ecg_info)
+        bio_df = pd.concat([bio_df, ecg_raw], axis=1)
 
-    #  eda
-    eda, eda_info = eda_process(eda_raw, sampling_rate, method='neurokit')
-    bio_info.update(eda_info)
-    bio_df = pd.concat([bio_df, eda], axis=1)
+        #  rsp
+        rsp, rsp_info = rsp_process(rsp_raw, sampling_rate=sampling_rate,
+                                    method='khodadad2018')
+        bio_info.update(rsp_info)
+        bio_df = pd.concat([bio_df, rsp], axis=1)
 
-    # return a dataframe
-    bio_df['TTL'] = df['TTL']
+        #  eda
+        eda, eda_info = eda_process(eda_raw, sampling_rate, method='neurokit')
+        bio_info.update(eda_info)
+        bio_df = pd.concat([bio_df, eda], axis=1)
+
+        # return a dataframe
+        bio_df['TTL'] = df['TTL']
 
     return(bio_df, bio_info)
 
@@ -93,34 +97,37 @@ def neuromod_ppg_process(ppg_raw, sampling_rate=10000):
     info : dict
         containing list of intervals between peaks
     """
-    # Prepare signal for processing
-    ppg_clean = neuromod_ppg_clean(ppg_raw, sampling_rate=sampling_rate)
+    ppg_signal = as_vector(ppg_raw)
+
+    # Clean signal
+    ppg_cleaned = signal_detrend(ppg_signal, order=1)
 
     # Find peaks
-    info = ppg_findpeaks(ppg_clean, sampling_rate=sampling_rate)
+    info = ppg_findpeaks(ppg_cleaned, sampling_rate=sampling_rate)
+    info['sampling_rate'] = sampling_rate  # Add sampling rate in dict info
 
     # correct beat detection
-    _, peaks = signal_fixpeaks(peaks=info,
-                               sampling_rate=sampling_rate,
-                               iterative=True, interval_min=0.5,
-                               interval_max=1.5, method="Kubios")
-    info_corrected = {"PPG_Peaks": peaks}
-    # Mark peaks
-    peaks_signal = signal_formatpeaks(info_corrected,
-                                      desired_length=len(ppg_clean),
-                                      peak_indice=info_corrected)
-    # Rate computation
-    rate = signal_rate(info_corrected["PPG_Peaks"],
-                       sampling_rate=sampling_rate,
-                       desired_length=len(ppg_clean))
+    artifacts, peaks = signal_fixpeaks(peaks=info,
+                              sampling_rate=sampling_rate,iterative=True,
+                              method="Kubios")
+    info_corrected = {"PPG_Peaks": peaks, "Artifacts": artifacts}
     # sanitize info dict
     info_corrected["PPG_Peaks_uncorrected"] = info["PPG_Peaks"]
+    
+    # Mark peaks
+    peaks_signal = _signal_from_indices(info["PPG_Peaks"], desired_length=len(ppg_cleaned))
 
-    return pd.DataFrame({"PPG_Raw": ppg_raw,
-                         "PPG_Clean": ppg_clean,
-                         "PPG_Peaks": peaks_signal,
-                         "PPG_Rate": rate}), info_corrected
+    # Rate computation
+    rate = signal_rate(info_corrected["PPG_Peaks"], 
+                       sampling_rate=sampling_rate,
+                       desired_length=len(ppg_cleaned))
 
+    # Prepare output
+    signals = pd.DataFrame(
+        {"PPG_Raw": ppg_signal, "PPG_Clean": ppg_cleaned, "PPG_Rate": rate, "PPG_Peaks": peaks_signal}
+    )
+
+    return signals, info_corrected
 
 def neuromod_ecg_process(ecg_raw, sampling_rate=10000, method='fmri'):
     """

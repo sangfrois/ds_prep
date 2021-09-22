@@ -105,8 +105,6 @@ def neuromod_bio_clean(tsv=None, data=None, h5=None, sampling_rate=1000):
 def neuromod_ppg_clean(ppg_signal, sampling_rate=10000, method='nabian2018'):
     ppg_cleaned = nk.ppg_clean(ppg_signal, sampling_rate=sampling_rate,
                                method=method)
-    # local regression smoothing
-    ppg_cleaned = nk.signal_smooth(ppg_cleaned, method='loess', alpha=0.2)
 
     return ppg_cleaned
 # ======================================================================
@@ -127,7 +125,7 @@ def neuromod_ecg_clean(ecg_signal, trigger_pulse,
         The raw ECG channel.
     sampling_rate : int
         The sampling frequency of `ecg_signal` (in Hz, i.e., samples/second).
-        Defaults to 1000.
+        Defaults to 10000.
     method : str
         The processing pipeline to apply. Defaults to 'fmri'
     Returns
@@ -210,23 +208,24 @@ def _ecg_clean_biopac(timeseries, sampling_rate=10000., tr=1.49):
     slices = 60 # number of slice per volume (tr)
     mb = 4 # multiband factor of sequence
     Q = 100 # a value to play around with
-    nyquist = float64(sampling_rate/2)
+    nyquist = np.float64(sampling_rate/2)
     notches = {'slices': slices / mb / tr,
                'tr': 1 / tr}
     # find trigger timing
     triggers = timeseries[timeseries['Trigger'] > 4].index.values
+    print(triggers)
     # remove baseline wandering
     filtered = nk.signal_filter(timeseries['ECG'][triggers[1]:triggers[-1]],
-                                sampling_rate=sampling_rate, lowcut = 2)
+                                sampling_rate=int(sampling_rate), lowcut = 2)
     # Filtering at specific harmonics, with trigger timing info
-    filtered = _comb_band_stop(notches, filtered, Q, sampling_rate)
+    filtered = _comb_band_stop(notches, nyquist, filtered, Q, sampling_rate)
     # bandpass filtering
-    ecg_clean = nk.signal_filter(filtered, sampling_rate=sampling_rate, lowcut=2,
+    filtered = nk.signal_filter(filtered, sampling_rate=sampling_rate, lowcut=2,
                                  highcut=20, method='butter', order=5)
 
     return filtered
 
-def _comb_band_stop(notches, filtered, Q, sampling_rate):
+def _comb_band_stop(notches, nyquist, filtered, Q, sampling_rate):
     """
     A serie of notch filters aligned with the scanner gradient's harmonics
 

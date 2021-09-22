@@ -7,7 +7,7 @@ from list_sub import list_sub
 import json
 import logging
 from CLI import _get_parser2
-from pandas import read_csv
+from pandas import read_csv, errors
 import os
 from neurokit2 import read_acqknowledge
 
@@ -28,8 +28,6 @@ def volume_counter(root, subject, ses=None):
     ses : string
         name of acquisition session. Optional workflow for specific experiment
         default is None
-    save_path: path
-        root directory of
     Returns:
     --------
     ses_runs: dictionary
@@ -54,7 +52,7 @@ def volume_counter(root, subject, ses=None):
                                        root, subject, exp, file))  # resampling
 
             # initialize a df with TTL values over 4 (switch either ~0 or ~5)
-            query_df = bio_df.query('TTL > 4')
+            query_df = bio_df[bio_df['Custom, HLT100C - A 5'] > 4]
 
             # Define session length - this list will be less
             # memory expensive to play with than dataframe
@@ -157,13 +155,18 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
     # iterate through sessions and get _matches.tsv with list_sub dict
     for exp in ses_runs_matches:
         print(exp)
-        df = read_csv(f"{root}/sourcedata/physio/{sub}/{exp}/"
-                      f"{ses_runs_matches[exp][0]}", sep='\t', header=None)
+        try:
+            df = read_csv(f"{root}/sourcedata/physio/{sub}/{exp}/"
+                          f"{ses_runs_matches[exp][0]}", sep='\t', header=None)
+        except errors.EmptyDataError:
+            print(f"sourcedata not co-registered properly for {exp}")
+            continue
     # first item of the dictionary returned by list_sub is a tsv file
 
         # initialize a counter and a dictionary
         idx = 1
         nb_expected_volumes_run = {}
+        tasks=[]
         # get _bold.json filename in the matches.tsv we just read
         for filename in df.iloc[:, 0]:
             # troubleshoot unexisting paths present in the tsv file
@@ -191,13 +194,21 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                 with open(f"{root}/{filename[:-7]}.json") as f:
                     bold = json.load(f)
             # we want to GET THE NB OF VOLUMES in the _bold.json of a given run
-            nb_expected_volumes_run[f'{idx:02d}'
+            try:
+                nb_expected_volumes_run[f'{idx:02d}'
                                     ] = bold["time"
                                              ]["samples"
                                                ]["AcquisitionNumber"][-1]
+            except KeyError:
+                pprintpp.pprint(f"skipping {exp} because .json info non-existant")
+                continue
 
             # not super elegant but does the trick - counts the nb of runs/ses
             idx += 1
+            task = filename.rfind(f"{exp}_")+8
+            task_end = filename.rfind("_")
+            tasks += [filename[task:task_end]]
+
         # print the thing to show progress
         print(f"finished accessing json info for: {exp}")
         print(nb_expected_volumes_run)
@@ -207,15 +218,15 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
         nb_expected_runs[exp] = nb_expected_volumes_run
         nb_expected_runs[exp]['expected_runs'] = len(df)
         nb_expected_runs[exp]['processed_runs'] = idx-1  # counter is used here
-        task = filename.rfind(f"{exp}_")+8
-        task_end = filename.rfind("_")
-        nb_expected_runs[exp]['task'] = filename[task:task_end]
+        nb_expected_runs[exp]['task'] = tasks
         # save the name
         name = ses_info[exp]
         if name:
+            name.reverse()
             nb_expected_runs[exp]['in_file'] = name
 
         if count_vol:
+            run_dict = {}
             # check if biopac file exist, notify the user that we won't
             # count volumes
             try:
@@ -231,7 +242,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                                     f"{root}sourcedata/physio/", sub, ses=exp)
                         print("finished counting volumes in physio file for:",
                               exp)
-                        run_dict = {}
+
                         for i, run in enumerate(vol_in_biopac[exp]):
                             run_dict.update({f"run-{i+1:02d}": run})
 
@@ -241,11 +252,13 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                     except KeyError:
                         continue
             except IndexError:
-                print('Directory is empty: ',
+                nb_expected_runs[exp]['recorded_triggers'] = float('nan')
+                print('Directory is empty or file is clobbered: ',
                       f"{root}sourcedata/physio/{sub}/{exp}/")
 
                 print(f"skipping :{exp} for task {filename}")
-        print(run_dict)
+        if run_dict:
+            print(run_dict)
         print('~'*30)
 
     if show:
