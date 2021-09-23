@@ -1,6 +1,8 @@
 -e git+https://github.com/dPys/deepbrain.git
 -e git+git@github.com:bpinsard/dipy.git@testing
+-e git+https://github.com/sangfrois/phys2bids.git
 pybids>=0.10.2
-phys2bids>=2.2.3
 templateflow>=0.6.2
+scipy>=1.6.0
+neurokit>=0.1.4.1
 

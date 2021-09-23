@@ -24,6 +24,11 @@ def _get_parser():
                           type=str,
                           help='Specify root directory of dataset',
                           default=None)
+    required.add_argument('-outdir', '--output-directory',
+                          dest='sourcedata',
+                          type=str,
+                          help='Specify root directory of dataset',
+                          default=None)
     required.add_argument('-sub', '--subject',
                           dest='sub',
                           type=str,
@@ -36,7 +41,7 @@ def _get_parser():
                                'sessions to process.')
     return parser
 
-def neuromod_phys2bids(root, sub, sessions=None):
+def neuromod_phys2bids(root,sourcedata, sub, sessions=None):
     """
     Phys2Bids conversion for one subject data
 
@@ -44,7 +49,7 @@ def neuromod_phys2bids(root, sub, sessions=None):
     Parameters:
     ------------
     root : path
-        main directory containing the biopac data (e.g. /to/dataset/sourcedata)
+        main directory containing the biopac data (e.g. /to/dataset/info)
     subject : string
         name of path for a specific subject (e.g.'sub-03')
     sessions : list
@@ -69,8 +74,8 @@ def neuromod_phys2bids(root, sub, sessions=None):
                 phys2bids(
                         filename[i],
                         info=False,
-                        indir=f'/data/neuromod/DATA/cneuromod/friends/sourcedata/physio/{sub}/{col}/',
-                        outdir=f'/scratch/flesp/physio_data/friends/{sub}/{col}',
+                        indir=f'{sourcedata}/{sub}/{col}/',
+                        outdir=f'{root}/{sub}/{col}',
                         heur_file=None,
                         sub=sub[-2:],
                         ses=col[-3:],
@@ -90,8 +95,8 @@ def neuromod_phys2bids(root, sub, sessions=None):
                  phys2bids(
                     filename,
                     info=False,
-                    indir=f'/data/neuromod/DATA/cneuromod/friends/sourcedata/physio/{sub}/{col}/',
-                    outdir=f'/scratch/flesp/physio_data/friends/{sub}/{col}',
+                    indir=f'{sourcedata}physio/{sub}/{col}/',
+                    outdir=f'{root}/{sub}/{col}',
                     heur_file=None,
                     sub=sub[-2:],
                     ses=col[-3:],
@@ -116,7 +121,7 @@ def neuromod_phys2bids(root, sub, sessions=None):
                         filename[i],
                         info=False,
                         indir=f'/data/neuromod/DATA/cneuromod/friends/sourcedata/physio/{sub}/{col}/',
-                        outdir=f'/scratch/flesp/physio_data/friends/{sub}/{col}',
+                        outdir=f'{root}/{sub}/{col}',
                         heur_file=None,
                         sub=sub[-2:],
                         ses=col[-3:],
