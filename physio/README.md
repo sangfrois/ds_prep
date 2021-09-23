@@ -119,6 +119,8 @@ Find another CLI that cuts and converts physiological recordings using phys2bids
 ```
 #### Example
 **WATCH OUT** : make sure that the `.json` info file are in `-outdir`
+
 ``python ds_prep/physio/utils/get_info.py -indir /data/neuromod/DATA/cneuromod/friends/sourcedata/physio/ -outdir /scratch/flesp/physio_data/friends/ -sub sub-01``
+
 ## 5. Rename segments in BIDS compliant format and discard useless files
 **TO-DO**
