@@ -117,3 +117,6 @@ Find another CLI that cuts and converts physiological recordings using phys2bids
 ```
 -ses ses-011
 ```
+
+## 5. Rename segments in BIDS compliant format and discard useless files
+**TO-DO**
