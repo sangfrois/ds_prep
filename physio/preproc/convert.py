@@ -18,14 +18,14 @@ def _get_parser():
     parser = argparse.ArgumentParser()
     optional = parser._action_groups.pop()
     required = parser.add_argument_group('Required Argument:')
-    
-    required.add_argument('-outdir', '--output-directory',
-                          dest='root',
+
+    required.add_argument('-indir', '--input-directory',
+                          dest='sourcedata',
                           type=str,
                           help='Specify where you want to save the converted dataset',
                           default=None)
-    required.add_argument('-indir', '--input-directory',
-                          dest='sourcedata',
+    required.add_argument('-outdir', '--output-directory',
+                          dest='scratch',
                           type=str,
                           help='Specify root directory of dataset where sourcedata stands',
                           default=None)
@@ -39,15 +39,17 @@ def _get_parser():
                           help='Specify session number, e.g. ses-001')
     return parser
 
-def neuromod_phys2bids(root,sourcedata, sub, sessions=None):
+def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
     """
     Phys2Bids conversion for one subject data
 
-    
+
     Parameters:
     ------------
-    root : path
+    sourcedata : path
         main directory containing the biopac data (e.g. /to/dataset/info)
+    scratch : path
+        directory to save data and to retrieve acquisition info (`.json file`)
     subject : string
         name of path for a specific subject (e.g.'sub-03')
     sessions : list
@@ -56,85 +58,92 @@ def neuromod_phys2bids(root,sourcedata, sub, sessions=None):
     --------
     phys2bids output
     """
-    info = pd.read_json(f"{root}{sub}/{sub}_volumes_all-ses-runs.json")
+    # fetch info
+    info = pd.read_json(f"{scratch}{sub}/{sub}_volumes_all-ses-runs.json")
+    # define sessions
     if sessions is None:
         sessions = info.columns
     else:
         sessions = [sessions]
+    # iterate through info
     for col in sessions:
+        # skip empty sessions
         if col is None:
             continue
         print(col)
-        filename=info[col]['in_file']
+
+        # Iterate through files in each session and run phys2bids
+        filename = info[col]['in_file']
         if filename is list:
-            for i in range (len(filename)-1):
+            for i in range(len(filename)-1):
                 print(i)
                 phys2bids(
                         filename[i],
                         info=False,
                         indir=f'{sourcedata}/{sub}/{col}/',
-                        outdir=f'{root}/{sub}/{col}',
+                        outdir=f'{scratch}/{sub}/{col}',
                         heur_file=None,
                         sub=sub[-2:],
                         ses=col[-3:],
                         chtrig=4,
                         chsel=None,
-                        num_timepoints_expected=info[col]['recorded_triggers'][f'run-0{i+1}'],
+                        num_timepoints_expected=info[col]['recorded_triggers'][
+                                                          f'run-0{i+1}'],
                         tr=1.49,
                         thr=4,
                         pad=9,
-                        ch_name=["EDA", "PPG", "ECG", "TTL", "RSP" ],
+                        ch_name=["EDA", "PPG", "ECG", "TTL", "RSP"],
                         yml='',
                         debug=False,
-                        quiet=False,
-                    )
+                        quiet=False)
         else:
-             try:
-                 phys2bids(
+            try:
+                phys2bids(
                     filename,
                     info=False,
                     indir=f'{sourcedata}physio/{sub}/{col}/',
-                    outdir=f'{root}/{sub}/{col}',
+                    outdir=f'{scratch}/{sub}/{col}',
                     heur_file=None,
                     sub=sub[-2:],
                     ses=col[-3:],
                     chtrig=4,
                     chsel=None,
-                    num_timepoints_expected=info[col]['recorded_triggers']['run-01'],
+                    num_timepoints_expected=info[col]['recorded_triggers'][
+                                                      'run-01'],
                     tr=1.49,
                     thr=4,
                     pad=9,
-                    ch_name=["EDA", "PPG", "ECG", "TTL", "RSP" ],
+                    ch_name=["EDA", "PPG", "ECG", "TTL", "RSP"],
                     yml='',
                     debug=False,
                     quiet=False,
                 )
              #except TypeError:
               #   print(f'skipping {col} because no input file given {filename}')
-               #  continue
+               #  con
              except AttributeError:
                  for i in range (len(filename)):
                      print(i)
                      phys2bids(
                         filename[i],
                         info=False,
-                        indir=f'/data/neuromod/DATA/cneuromod/friends/sourcedata/physio/{sub}/{col}/',
-                        outdir=f'{root}/{sub}/{col}',
+                        indir=f'{sourcedata}/{sub}/{col}/',
+                        outdir=f'{scratch}/{sub}/{col}',
                         heur_file=None,
                         sub=sub[-2:],
                         ses=col[-3:],
                         chtrig=4,
                         chsel=None,
-                        num_timepoints_expected=info[col]['recorded_triggers'][f'run-0{i+1}'],
+                        num_timepoints_expected=info[col]['recorded_triggers'][
+                                                          f'run-0{i+1}'],
                         tr=1.49,
                         thr=4,
                         pad=9,
-                        ch_name=["EDA", "PPG", "ECG", "TTL", "RSP" ],
+                        ch_name=["EDA", "PPG", "ECG", "TTL", "RSP"],
                         yml='',
                         debug=False,
-                        quiet=False,
-                    )   
-        print("~"*30)        
+                        quiet=False)
+        print("~"*30)
 
 def _main(argv=None):
     options = _get_parser().parse_args(argv)
@@ -143,4 +152,3 @@ def _main(argv=None):
 
 if __name__ == '__main__':
     _main(sys.argv[1:])
-
