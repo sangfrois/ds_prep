@@ -19,26 +19,24 @@ def _get_parser():
     optional = parser._action_groups.pop()
     required = parser.add_argument_group('Required Argument:')
     
-    required.add_argument('-indir', '--input-directory',
+    required.add_argument('-outdir', '--output-directory',
                           dest='root',
                           type=str,
-                          help='Specify root directory of dataset',
+                          help='Specify where you want to save the converted dataset',
                           default=None)
-    required.add_argument('-outdir', '--output-directory',
+    required.add_argument('-indir', '--input-directory',
                           dest='sourcedata',
                           type=str,
-                          help='Specify root directory of dataset',
+                          help='Specify root directory of dataset where sourcedata stands',
                           default=None)
     required.add_argument('-sub', '--subject',
                           dest='sub',
                           type=str,
-                          help='Specify alongside \"-heur\". Code of '
-                               'subject to process.')
-    required.add_argument('-ses', '--session',
+                          help='Specify subject number, e.g. sub-01')
+    optional.add_argument('-ses', '--session',
                           dest='sessions',
                           type=str,
-                          help='Specify alongside \"-heur\". Code of '
-                               'sessions to process.')
+                          help='Specify session number, e.g. ses-001')
     return parser
 
 def neuromod_phys2bids(root,sourcedata, sub, sessions=None):
@@ -111,9 +109,9 @@ def neuromod_phys2bids(root,sourcedata, sub, sessions=None):
                     debug=False,
                     quiet=False,
                 )
-             except TypeError:
-                 print(f'skipping {col} because no input file given')
-                 continue
+             #except TypeError:
+              #   print(f'skipping {col} because no input file given {filename}')
+               #  continue
              except AttributeError:
                  for i in range (len(filename)):
                      print(i)

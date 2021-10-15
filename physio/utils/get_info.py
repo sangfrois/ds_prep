@@ -52,7 +52,7 @@ def volume_counter(root, subject, ses=None):
                                        root, subject, exp, file))  # resampling
 
             # initialize a df with TTL values over 4 (switch either ~0 or ~5)
-            query_df = bio_df[bio_df['Custom, HLT100C - A 5'] > 4]
+            query_df = bio_df[bio_df.iloc[:, 3] > 4]
 
             # Define session length - this list will be less
             # memory expensive to play with than dataframe
@@ -248,6 +248,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
 
                         nb_expected_runs[exp][
                                       'recorded_triggers'] = run_dict
+                        
                     # skip the session if we did not find the _bold.json
                     except KeyError:
                         continue

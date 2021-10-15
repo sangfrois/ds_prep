@@ -49,11 +49,9 @@ def list_sub(root=None, sub=None, ses=None, type='.acq',save=False, show=False):
     file_list = []
     ses_runs = {}
     ses_list = os.listdir(f'{root}{sub}')
-
     # list files in only one session
     if ses is not None:
         dir = f'{root}{sub}/{ses}'
-        
         # if the path exists, list .acq files
         if os.path.exists(dir):
             for filename in os.listdir(dir):
@@ -72,9 +70,10 @@ def list_sub(root=None, sub=None, ses=None, type='.acq',save=False, show=False):
             raise Exception("Session path you gave does not exist")
 
     # list files in all sessions (or here, exp for experiments)
-    elif os.path.isdir(f'{root}{sub}/{ses_list[0]}') is True:
-        
+    elif os.path.isdir(f'{root}{sub}/{ses_list[1]}') is True:
         for exp in ses_list:
+            if exp.endswith('.json'):
+                continue
             # re-initialize the list
             file_list = []
             # iterate through directory's content

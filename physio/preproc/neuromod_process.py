@@ -7,8 +7,10 @@ Neuromod processing utilities
 import pandas as pd
 # high-level processing utils
 from neurokit2 import eda_process, rsp_process, ecg_peaks,  ppg_findpeaks
+from systole.correction import correct_rr
 # signal utils
-from neurokit2.misc import as_vector
+from systole.utils import input_conversion
+from neurokit2.misc import as_vector, intervals_to_peaks
 from neurokit2 import signal_rate, signal_fixpeaks, signal_detrend
 from neurokit2.signal.signal_formatpeaks import _signal_from_indices
 # home brewed cleaning utils
@@ -105,29 +107,26 @@ def neuromod_ppg_process(ppg_raw, sampling_rate=10000):
     # Find peaks
     info = ppg_findpeaks(ppg_cleaned, sampling_rate=sampling_rate)
     info['sampling_rate'] = sampling_rate  # Add sampling rate in dict info
-
-    # correct beat detection
-    artifacts, peaks = signal_fixpeaks(peaks=info,
-                              sampling_rate=sampling_rate,iterative=True,
-                              method="Kubios")
-    info_corrected = {"PPG_Peaks": peaks, "Artifacts": artifacts}
-    # sanitize info dict
-    info_corrected["PPG_Peaks_uncorrected"] = info["PPG_Peaks"]
     
-    # Mark peaks
-    peaks_signal = _signal_from_indices(info["PPG_Peaks"], desired_length=len(ppg_cleaned))
-
-    # Rate computation
-    rate = signal_rate(info_corrected["PPG_Peaks"], 
-                       sampling_rate=sampling_rate,
-                       desired_length=len(ppg_cleaned))
+    rr = input_conversion(info['PPG_Peaks'], input_type='peaks_idx', output_type='rr_ms', sfreq=sampling_rate)
+    
+    # correct beat detection
+    corrected = correct_rr(rr)
+    # sanitize info dict
+    info['PPG_Peaks_corrected'] = input_conversion(corrected['clean_rr'],
+                                                   input_type='rr_ms',
+                                                   output_type='peaks_idx')
+    
+    info.update({'ectopic': corrected['ectopic'], 'short': corrected['short'], 'clean_rr': corrected['clean_rr'],
+                 'long': corrected['long'], 'extra': corrected['extra'], 'missed': corrected['missed']})
+    
 
     # Prepare output
     signals = pd.DataFrame(
-        {"PPG_Raw": ppg_signal, "PPG_Clean": ppg_cleaned, "PPG_Rate": rate, "PPG_Peaks": peaks_signal}
+        {"PPG_Raw": ppg_signal, "PPG_Clean": ppg_cleaned}
     )
 
-    return signals, info_corrected
+    return signals, info
 
 def neuromod_ecg_process(ecg_raw, sampling_rate=10000, method='fmri'):
     """
