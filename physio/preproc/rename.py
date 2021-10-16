@@ -4,6 +4,7 @@
 
 import glob
 import pandas as pd
+import numpy as np
 import argparse
 import sys
 import os
@@ -73,21 +74,23 @@ def co_register_physio(scratch, sub, sessions=None):
         json = glob.glob(f"{scratch}{sub}/{ses}/*.json")
         log = glob.glob(f"{scratch}{sub}/{ses}/code/conversion/*.log")
         png = glob.glob(f"{scratch}{sub}/{ses}/code/conversion/*.png")
-
+        print(tsv)
         # check sanity of info
-        if ses['expected_runs'] is not ses['processed_runs']:
+        if info[ses]['expected_runs'] is not info[ses]['processed_runs']:
             raise(f"Expected number of runs {ses['expected_runs']} "
                   "does not match info from neuroimaging metadata")
-        elif len(ses['tasks']) is not ses['expected_runs']:
+        elif len(info[ses]['task']) is not info[ses]['expected_runs']:
             raise("Number of tasks does not match expected number of runs")
-        elif ses['recorded_triggers'].values is None:
+        if info[ses]['recorded_triggers'].values is None:
             raise("No recorded triggers information - check physio files")
 
         # if input is normal, then check co-registration
         else:
-            triggers = ses['recorded_triggers'].values()
+            triggers = list(info[ses]['recorded_triggers'].values())
+            triggers = list(np.concatenate(triggers).flat)
             # remove files that don't contain enough volumes
             for idx, volumes in enumerate(triggers):
+                print(volumes, triggers)
                 if volumes < 400:
                     os.remove(tsv[idx])
                     os.remove(json[idx])
@@ -96,13 +99,15 @@ def co_register_physio(scratch, sub, sessions=None):
                     triggers.pop(idx)
             # check if number of volumes matches neuroimaging JSON sidecar
             for idx, volumes in enumerate(triggers):
-                if volumes is not ses[f'{idx+1:02d}']:
-                    raise(f"Recorded triggers info for {ses[idx+1:02d]}")
+                if volumes is not info[ses][f'{idx+1:02d}']:
+                    print(triggers)
+                    continue
+                    #raise(f"Recorded triggers info for {info[ses][idx+1:02d]}")
                 else:
                     os.rename(tsv[idx],
-                              f"{sub}_{ses}_{ses['tasks'][idx]}_physio.tsv.gz")
+                              f"{sub}_{ses}_{info[ses]['task'][idx]}_physio.tsv.gz")
                     os.rename(json[idx],
-                              f"{sub}_{ses}_{ses['tasks'][idx]}_physio.json")
+                              f"{sub}_{ses}_{info[ses]['task'][idx]}_physio.json")
 
 
 def _main(argv=None):
