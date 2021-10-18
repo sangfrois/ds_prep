@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# !/usr/bin/env python -W ignore::DeprecationWarning
+"""Neuromod phys data conversion."""
+
 from phys2bids.phys2bids import phys2bids
 import argparse
 import sys
@@ -118,9 +122,6 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
                     debug=False,
                     quiet=False,
                 )
-             #except TypeError:
-              #   print(f'skipping {col} because no input file given {filename}')
-               #  con
              except AttributeError:
                  for i in range (len(filename)):
                      print(i)
