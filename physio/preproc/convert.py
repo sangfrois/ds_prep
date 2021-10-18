@@ -122,10 +122,10 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
                     debug=False,
                     quiet=False,
                 )
-             except AttributeError:
-                 for i in range (len(filename)):
-                     print(i)
-                     phys2bids(
+            except AttributeError:
+                for i in range(len(filename)):
+                    print(i)
+                    phys2bids(
                         filename[i],
                         info=False,
                         indir=f'{sourcedata}/{sub}/{col}/',
