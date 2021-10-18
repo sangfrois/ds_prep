@@ -71,9 +71,17 @@ def co_register_physio(scratch, sub, sessions=None):
     for ses in sessions:
         # list files in the session
         tsv = glob.glob(f"{scratch}{sub}/{ses}/*.tsv.gz")
+        tsv.sort()
+
         json = glob.glob(f"{scratch}{sub}/{ses}/*.json")
+        json.sort()
+
         log = glob.glob(f"{scratch}{sub}/{ses}/code/conversion/*.log")
+        log.sort()
+
         png = glob.glob(f"{scratch}{sub}/{ses}/code/conversion/*.png")
+        png.sort()
+
         print(tsv)
         # check sanity of info
         if info[ses]['expected_runs'] is not info[ses]['processed_runs']:
@@ -101,11 +109,12 @@ def co_register_physio(scratch, sub, sessions=None):
             for idx, volumes in enumerate(triggers):
                 if volumes is not info[ses][f'{idx+1:02d}']:
                     print(triggers)
+                    # raise(f"Recorded triggers info for {info[ses][idx+1:02d]}")
                     continue
-                    #raise(f"Recorded triggers info for {info[ses][idx+1:02d]}")
+
                 else:
                     os.rename(tsv[idx],
-                              f"{sub}_{ses}_{info[ses]['task'][idx]}_physio.tsv.gz")
+                              f"{scratch}/{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.tsv.gz")
                     os.rename(json[idx],
                               f"{sub}_{ses}_{info[ses]['task'][idx]}_physio.json")
 
