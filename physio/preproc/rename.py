@@ -73,7 +73,8 @@ def co_register_physio(scratch, sub, sessions=None):
         # list files in the session
         tsv = glob.glob(f"{scratch}{sub}/{ses}/*.tsv.gz")
         tsv.sort()
-        if len(tsv) < 2:
+
+        if tsv is None:
             print(f"no physio file for {ses}")
             continue
 
@@ -90,7 +91,9 @@ def co_register_physio(scratch, sub, sessions=None):
         if info[ses]['expected_runs'] is not info[ses]['processed_runs']:
             print(f"Expected number of runs {info[ses]['expected_runs']} "
                   "does not match info from neuroimaging metadata")
-        elif len(info[ses]['task']) is not info[ses]['expected_runs']:
+        if info[ses]['task'] is None:
+
+        if len(info[ses]['task']) is not info[ses]['expected_runs']:
             print("Number of tasks does not match expected number of runs")
             continue
         if info[ses]['recorded_triggers'].values is None:
@@ -104,23 +107,22 @@ def co_register_physio(scratch, sub, sessions=None):
             to_be_del = []
             # remove files that don't contain enough volumes
             for idx, volumes in enumerate(triggers):
-                
-                if volumes < 400:
-                    os.remove(tsv[idx])
-                    
-                    os.remove(json[idx])
-                    
-                    os.remove(log[idx])
-                    
-                    os.remove(png[idx])
 
+                if volumes < 400:
                     to_be_del.append(idx)
-                    
+
             triggers = np.delete(triggers, to_be_del)
             tsv = np.delete(tsv, to_be_del)
             json = np.delete(json, to_be_del)
             log = np.delete(log, to_be_del)
             png = np.delete(png, to_be_del)
+
+            for idx in to_be_del:
+                os.remove(tsv[idx])
+                os.remove(json[idx])
+                os.remove(log[idx])
+                os.remove(png[idx])
+
             # check if number of volumes matches neuroimaging JSON sidecar
             for idx, volumes in enumerate(triggers):
                 print(info[ses][f'{idx+1:02d}'])
