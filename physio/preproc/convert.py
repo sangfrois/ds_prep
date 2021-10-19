@@ -72,7 +72,7 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
     # iterate through info
     for col in sessions:
         # skip empty sessions
-        if col is None:
+        if info[col] is None:
             continue
         print(col)
 
@@ -80,7 +80,6 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
         filename = info[col]['in_file']
         if filename is list:
             for i in range(len(filename)-1):
-                print(i)
                 phys2bids(
                         filename[i],
                         info=False,

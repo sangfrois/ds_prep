@@ -70,6 +70,7 @@ def co_register_physio(scratch, sub, sessions=None):
     # iterate through sesssions
     for ses in sessions:
         print(f"renaming files in session : {ses}")
+        
         # list files in the session
         tsv = glob.glob(f"{scratch}{sub}/{ses}/*.tsv.gz")
         tsv.sort()
@@ -87,55 +88,62 @@ def co_register_physio(scratch, sub, sessions=None):
         png = glob.glob(f"{scratch}{sub}/{ses}/code/conversion/*.png")
         png.sort()
 
-        # check sanity of info
+        # check sanity of info - expected runs is number of runs in BOLD sidecar
         if info[ses]['expected_runs'] is not info[ses]['processed_runs']:
             print(f"Expected number of runs {info[ses]['expected_runs']} "
                   "does not match info from neuroimaging metadata")
-        if info[ses]['task'] is None:
 
         if len(info[ses]['task']) is not info[ses]['expected_runs']:
             print("Number of tasks does not match expected number of runs")
             continue
+            
         if info[ses]['recorded_triggers'].values is None:
             print(f"No recorded triggers information - check physio files for {ses}")
             continue
 
         # if input is normal, then check co-registration
         else:
+            # sanitize list
             triggers = list(info[ses]['recorded_triggers'].values())
             triggers = list(np.concatenate(triggers).flat)
+            
             to_be_del = []
+            
             # remove files that don't contain enough volumes
             for idx, volumes in enumerate(triggers):
-
+                # NOTE: this should not be hardcoded 
                 if volumes < 400:
                     to_be_del.append(idx)
-
+            
+            # these can be safely removed
+            for idx in to_be_del:
+                os.remove(tsv[idx])
+                os.remove(json[idx])
+                os.remove(log[idx])
+                os.remove(png[idx])
+            
+            # theses are to be kept
             triggers = np.delete(triggers, to_be_del)
             tsv = np.delete(tsv, to_be_del)
             json = np.delete(json, to_be_del)
             log = np.delete(log, to_be_del)
             png = np.delete(png, to_be_del)
 
-            for idx in to_be_del:
-                os.remove(tsv[idx])
-                os.remove(json[idx])
-                os.remove(log[idx])
-                os.remove(png[idx])
+            
 
             # check if number of volumes matches neuroimaging JSON sidecar
             for idx, volumes in enumerate(triggers):
                 print(info[ses][f'{idx+1:02d}'])
                 if volumes != info[ses][f'{idx+1:02d}']:
-                    print(triggers)
-                    # raise(f"Recorded triggers info for {info[ses][idx+1:02d]}")
+                    print(f"Recorded triggers info for {ses} does not match with "
+                          f"BOLD sidecar ({volumes} != {info[ses][idx+1:02d]})")
                     continue
 
                 else:
                     os.rename(tsv[idx],
-                              f"{scratch}/{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.tsv.gz")
+                              f"{scratch}{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.tsv.gz")
                     os.rename(json[idx],
-                              f"{scratch}/{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.json")
+                              f"{scratch}{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.json")
 
 
 def _main(argv=None):
