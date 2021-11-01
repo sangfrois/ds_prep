@@ -133,10 +133,11 @@ def co_register_physio(scratch, sub, sessions=None):
 
             # check if number of volumes matches neuroimaging JSON sidecar
             for idx, volumes in enumerate(triggers):
-                print(info[ses][f'{idx+1:02d}'])
-                if volumes != info[ses][f'{idx+1:02d}']:
+                i = f"{idx+1:02d}"
+                print(info[ses][i]) 
+                if volumes != info[ses][i]:
                     print(f"Recorded triggers info for {ses} does not match with "
-                          f"BOLD sidecar ({volumes} != {info[ses][idx+1:02d]})")
+                          f"BOLD sidecar ({volumes} != {info[ses][i]})")
                     continue
 
                 else:

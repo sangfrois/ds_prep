@@ -258,8 +258,8 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                       f"{root}sourcedata/physio/{sub}/{exp}/")
 
                 print(f"skipping :{exp} for task {filename}")
-        if run_dict:
-            print(run_dict)
+        #if run_dict:
+            #print(run_dict)
         print('~'*30)
 
     if show:

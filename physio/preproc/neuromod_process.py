@@ -5,13 +5,15 @@ Neuromod processing utilities
 """
 # dependencies
 import pandas as pd
+import numpy as np
 # high-level processing utils
 from neurokit2 import eda_process, rsp_process, ecg_peaks,  ppg_findpeaks
-from systole.correction import correct_rr
+from systole.correction import correct_rr, correct_peaks
+from heartpy import process, enhance_peaks
 # signal utils
 from systole.utils import input_conversion
 from neurokit2.misc import as_vector, intervals_to_peaks
-from neurokit2 import signal_rate, signal_fixpeaks, signal_detrend
+from neurokit2 import signal_rate, signal_fixpeaks, signal_filter
 from neurokit2.signal.signal_formatpeaks import _signal_from_indices
 # home brewed cleaning utils
 from neuromod_clean import neuromod_ecg_clean
@@ -71,6 +73,7 @@ def neuromod_bio_process(tsv=None, h5=None, df=None, sampling_rate=10000):
 
         # return a dataframe
         bio_df['TTL'] = df['TTL']
+        bio_df['time'] = df['time']
 
     return(bio_df, bio_info)
 
@@ -102,28 +105,50 @@ def neuromod_ppg_process(ppg_raw, sampling_rate=10000):
     ppg_signal = as_vector(ppg_raw)
 
     # Clean signal
-    ppg_cleaned = signal_detrend(ppg_signal, order=1)
-
+    ppg_cleaned = signal_filter(ppg_signal, sampling_rate=sampling_rate,
+                                lowcut=0.5, highcut=8, order=3)
+    print('PPG Cleaned')
+    
+    # heartpy
+    wd, m = process(ppg_cleaned, sampling_rate, reject_segmentwise=True,
+                    interp_clipping=True, report_time=True)
+    peak_list_hp = _signal_from_indices(wd['peaklist_cor'], desired_length=len(ppg_cleaned))
+    print('Heartpy workflow : done')
+    
     # Find peaks
     info = ppg_findpeaks(ppg_cleaned, sampling_rate=sampling_rate)
-    info['sampling_rate'] = sampling_rate  # Add sampling rate in dict info
+    peak_list_nk = _signal_from_indices(info['PPG_Peaks'], desired_length=len(ppg_cleaned))
+    print('Neurokit found peaks')
     
+    # peak to intervals
     rr = input_conversion(info['PPG_Peaks'], input_type='peaks_idx', output_type='rr_ms', sfreq=sampling_rate)
     
     # correct beat detection
     corrected = correct_rr(rr)
-    # sanitize info dict
-    info['PPG_Peaks_corrected'] = input_conversion(corrected['clean_rr'],
-                                                   input_type='rr_ms',
-                                                   output_type='peaks_idx')
+    corrected_peaks = correct_peaks(peak_list_hp, n_iterations=4)
+    print('systole corrected RR series')
     
-    info.update({'ectopic': corrected['ectopic'], 'short': corrected['short'], 'clean_rr': corrected['clean_rr'],
-                 'long': corrected['long'], 'extra': corrected['extra'], 'missed': corrected['missed']})
+    rate = signal_rate(info['PPG_Peaks'], sampling_rate=sampling_rate,
+                       desired_length=len(ppg_signal))
     
-
-    # Prepare output
+    # disagreement
+    disagree_beat_number = np.where(info['PPG_Peaks']!=wd['peaklist_cor'])[0]
+    disagree_idx = []
+    for i in disagree_beat_number:
+        disagree_idx.append(wd['peaklist_cor'][i])
+    
+    # sanitize info dict    
+    info.update({'ectopic': corrected['ectopic'], 'short': corrected['short'], 
+                 'clean_rr_systole': corrected['clean_rr'],'clean_rr_hp': wd['RR_list_cor'],
+                 'long': corrected['long'], 'extra': corrected['extra'], 'missed': corrected['missed'],
+                 'rejected_segments': wd['rejected_segments'], 'PPG_Peaks_corrected':wd['peaklist_cor'],
+                 'disagreement_list': disagree_idx, 'disagreement_count': len(disagree_idx)})
+    
+    # Prepare output  
     signals = pd.DataFrame(
-        {"PPG_Raw": ppg_signal, "PPG_Clean": ppg_cleaned}
+                {"PPG_Raw": ppg_signal, "PPG_Clean": ppg_cleaned, "PPG_Peaks_NK": peak_list_nk,
+                 "PPG_Peaks_HP": peak_list_hp, "PPG_Peaks_Systole": corrected_peaks['clean_peaks'],
+                 "PPG_Rate": rate}
     )
 
     return signals, info

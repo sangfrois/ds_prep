@@ -12,6 +12,7 @@ import argparse
 import glob
 import pandas as pd
 import os
+import pickle
 
 def _get_parser():
     """
@@ -52,7 +53,7 @@ def _get_parser():
 
 def neuromod_ppg_viz(indir, outdir, sub, sessions=None):
     """
-    Phys2Bids conversion for one subject data
+   Results for one subject data
 
 
     Parameters:
@@ -67,7 +68,7 @@ def neuromod_ppg_viz(indir, outdir, sub, sessions=None):
         specific session numbers can be listed (e.g. ['ses-001', 'ses-002']
     Returns:
     --------
-    phys2bids output
+    results output
     """
     if sessions is None:
         info = pd.read_json(f"{indir}{sub}/{sub}_volumes_all-ses-runs.json")
@@ -83,12 +84,12 @@ def neuromod_ppg_viz(indir, outdir, sub, sessions=None):
         json = glob.glob(f"{indir}{sub}/{ses}/*.json")
         json.sort()
         
-        for bio, sidecar in zip(tsv, json):
-            task=bio[bio.rfind('/')+1:]
+        tasks = info[ses]['tasks']
+        
+        for bio, sidecar, task in zip(tsv, json, tasks):
+            
             print(f"Processing {task}")
-            
             sidecar = pd.read_json(sidecar)
-            
             bio_df = pd.read_csv(f"{bio}",
                                  sep='\t',
                                  compression='gzip',
@@ -107,6 +108,12 @@ def neuromod_ppg_viz(indir, outdir, sub, sessions=None):
                 os.mkdir(f'{outdir}{sub}')
             if os.path.isdir(f'{outdir}{sub}/{ses}') is False:
                 os.mkdir(f'{outdir}{sub}/{ses}')
+            
+            signals['time'] = bio_df['time']
+            signals.to_csv(f'{outdir}{sub}/{ses}/{sub}_{ses}_{task}_physio-signals.tsv.gz', sep='\t', index=False)
+            
+            with open(f'{outdir}{sub}/{ses}/{sub}_{ses}_{task}_physio-info.json', 'wb') as fp:
+                pickle.dump(info_corrected, fp)
                 
             output_file(f"{outdir}{sub}/{ses}/{task}.html")
             save(plot)
