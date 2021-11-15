@@ -4,7 +4,7 @@
 Neuromod processing utilities
 """
 # dependencies
-from neuromod_process import neuromod_ppg_process
+from neuromod_process import neuromod_bio_process
 from bokeh.plotting import output_file, save
 from systole import plots
 import sys
@@ -47,6 +47,7 @@ def _get_parser():
     # optional
     optional.add_argument('-ses', '--session',
                           dest='sessions',
+                          nargs='*',
                           type=str,
                           help='Specify session number, e.g. ses-001')
     return parser
@@ -73,7 +74,7 @@ def neuromod_ppg_viz(indir, outdir, sub, sessions=None):
     if sessions is None:
         info = pd.read_json(f"{indir}{sub}/{sub}_volumes_all-ses-runs.json")
         sessions = info.columns
-    else:
+    elif isinstance(sessions, list) is False:
         sessions = [sessions]
     for ses in sessions:
         print(f"Currently processing {ses}")
@@ -83,12 +84,9 @@ def neuromod_ppg_viz(indir, outdir, sub, sessions=None):
         
         json = glob.glob(f"{indir}{sub}/{ses}/*.json")
         json.sort()
-        
-        tasks = info[ses]['tasks']
-        
-        for bio, sidecar, task in zip(tsv, json, tasks):
-            
-            print(f"Processing {task}")
+                
+        for bio, sidecar in zip(tsv, json):
+            fn = bio[bio.rfind('/')+1:-7]
             sidecar = pd.read_json(sidecar)
             bio_df = pd.read_csv(f"{bio}",
                                  sep='\t',
@@ -97,26 +95,33 @@ def neuromod_ppg_viz(indir, outdir, sub, sessions=None):
                                  names=sidecar.Columns)
             fs = sidecar['SamplingFrequency'][0]
             
-            signals, info_corrected = neuromod_ppg_process(bio_df['PPG'], fs)
-            
+            signals, info_corrected = neuromod_bio_process(df=bio_df, sampling_rate=fs)
+           
             plot = plots.plot_raw(signals['PPG_Clean'], backend='bokeh',
                                   show_heart_rate=True, show_artefacts=True, sfreq=fs)
             
             if os.path.isdir(f'{outdir}') is False:
                 os.mkdir(f'{outdir}')
+                print("Created output directory")
             if os.path.isdir(f'{outdir}{sub}') is False:
                 os.mkdir(f'{outdir}{sub}')
+                print(f"Created output directory for {sub}")
             if os.path.isdir(f'{outdir}{sub}/{ses}') is False:
                 os.mkdir(f'{outdir}{sub}/{ses}')
+                print(f"Created output directory for {ses}")
             
-            signals['time'] = bio_df['time']
-            signals.to_csv(f'{outdir}{sub}/{ses}/{sub}_{ses}_{task}_physio-signals.tsv.gz', sep='\t', index=False)
+            signals.to_csv(f'{outdir}{sub}/{ses}/{sub}_{ses}_{fn}_physio-signals.tsv.gz', sep='\t', index=False,
+                           compression='gzip')
+            print(f"Signals are saved with columns : {signals.columns}")
             
-            with open(f'{outdir}{sub}/{ses}/{sub}_{ses}_{task}_physio-info.json', 'wb') as fp:
+            with open(f'{outdir}{sub}/{ses}/{sub}_{ses}_{fn}_physio-info.json', 'wb') as fp:
                 pickle.dump(info_corrected, fp)
+            print(f"Info are saved with these features : {info_corrected.keys()}")
                 
-            output_file(f"{outdir}{sub}/{ses}/{task}.html")
+            output_file(f"{outdir}{sub}/{ses}/{fn}.html")
             save(plot)
+            
+            print(f"Done with {ses}, run-{fn[-2:]}")
     
     print('done')
     

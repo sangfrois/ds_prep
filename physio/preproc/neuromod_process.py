@@ -34,12 +34,14 @@ def neuromod_bio_process(tsv=None, h5=None, df=None, sampling_rate=10000):
 
     if tsv is not None:
         df = pd.read_csv(tsv, sep='\t', compression='gzip')
+        print("Reading TSV file")
 
     if h5 is not None:
         df = pd.read_hdf(h5, key='bio_df')
         sampling_rate = pd.read_hdf(h5, key='sampling_rate')
     # initialize returned objects
     if df is not None:
+        print("Reading pandas DataFrame")
 
         bio_info = {}
         bio_df = pd.DataFrame()
@@ -65,11 +67,13 @@ def neuromod_bio_process(tsv=None, h5=None, df=None, sampling_rate=10000):
                                     method='khodadad2018')
         bio_info.update(rsp_info)
         bio_df = pd.concat([bio_df, rsp], axis=1)
+        print("Respiration workflow: done")
 
         #  eda
         eda, eda_info = eda_process(eda_raw, sampling_rate, method='neurokit')
         bio_info.update(eda_info)
         bio_df = pd.concat([bio_df, eda], axis=1)
+        print("Electrodermal activity workflow: done")
 
         # return a dataframe
         bio_df['TTL'] = df['TTL']
@@ -110,10 +114,14 @@ def neuromod_ppg_process(ppg_raw, sampling_rate=10000):
     print('PPG Cleaned')
     
     # heartpy
+    print("HeartPy processing started")
     wd, m = process(ppg_cleaned, sampling_rate, reject_segmentwise=True,
                     interp_clipping=True, report_time=True)
     peak_list_hp = _signal_from_indices(wd['peaklist_cor'], desired_length=len(ppg_cleaned))
-    print('Heartpy workflow : done')
+    cumsum=0
+    for i in wd['rejected_segments']:
+        cumsum += int(np.diff(i)/sampling_rate)
+    print('Heartpy found peaks')
     
     # Find peaks
     info = ppg_findpeaks(ppg_cleaned, sampling_rate=sampling_rate)
@@ -124,25 +132,21 @@ def neuromod_ppg_process(ppg_raw, sampling_rate=10000):
     rr = input_conversion(info['PPG_Peaks'], input_type='peaks_idx', output_type='rr_ms', sfreq=sampling_rate)
     
     # correct beat detection
-    corrected = correct_rr(rr)
-    corrected_peaks = correct_peaks(peak_list_hp, n_iterations=4)
+    corrected = correct_rr(rr, n_iterations=4)
+    corrected_peaks = correct_peaks(peak_list_nk, n_iterations=4)
     print('systole corrected RR series')
     
     rate = signal_rate(info['PPG_Peaks'], sampling_rate=sampling_rate,
                        desired_length=len(ppg_signal))
-    
-    # disagreement
-    disagree_beat_number = np.where(info['PPG_Peaks']!=wd['peaklist_cor'])[0]
-    disagree_idx = []
-    for i in disagree_beat_number:
-        disagree_idx.append(wd['peaklist_cor'][i])
+
     
     # sanitize info dict    
-    info.update({'ectopic': corrected['ectopic'], 'short': corrected['short'], 
-                 'clean_rr_systole': corrected['clean_rr'],'clean_rr_hp': wd['RR_list_cor'],
-                 'long': corrected['long'], 'extra': corrected['extra'], 'missed': corrected['missed'],
-                 'rejected_segments': wd['rejected_segments'], 'PPG_Peaks_corrected':wd['peaklist_cor'],
-                 'disagreement_list': disagree_idx, 'disagreement_count': len(disagree_idx)})
+    info.update({'PPG_ectopic': corrected['ectopic'], 'PPG_short': corrected['short'], 
+                 'PPG_clean_rr_systole': corrected['clean_rr'],'PPG_clean_rr_hp': wd['RR_list_cor'],
+                 'PPG_long': corrected['long'], 'PPG_extra': corrected['extra'], 
+                 'PPG_missed': corrected['missed'],'PPG_rejected_segments': wd['rejected_segments'],
+                 'PPG_Peaks_corrected':wd['peaklist_cor'],'PPG_cumulseconds_rejected': cumsum, 
+                 'PPG_%_rejected_segments': cumsum/(len(ppg_signal)/sampling_rate)})
     
     # Prepare output  
     signals = pd.DataFrame(

@@ -75,7 +75,7 @@ def co_register_physio(scratch, sub, sessions=None):
         tsv = glob.glob(f"{scratch}{sub}/{ses}/*.tsv.gz")
         tsv.sort()
 
-        if tsv is None:
+        if tsv is None or len(tsv) == 0:
             print(f"no physio file for {ses}")
             continue
 
@@ -99,6 +99,10 @@ def co_register_physio(scratch, sub, sessions=None):
             
         if info[ses]['recorded_triggers'].values is None:
             print(f"No recorded triggers information - check physio files for {ses}")
+            continue
+            
+        if len(info[ses]['task']) == 0:
+            print(f"No task name listed ; skipping {ses}")
             continue
 
         # if input is normal, then check co-registration
@@ -128,8 +132,6 @@ def co_register_physio(scratch, sub, sessions=None):
             json = np.delete(json, to_be_del)
             log = np.delete(log, to_be_del)
             png = np.delete(png, to_be_del)
-
-            
 
             # check if number of volumes matches neuroimaging JSON sidecar
             for idx, volumes in enumerate(triggers):
