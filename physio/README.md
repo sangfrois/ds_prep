@@ -61,11 +61,14 @@ Decide if you want to print the dictionary in the command line with `-show`
 
 You can save (or not) the dictionary output where you want with `-save`
 
+Specify if you want to count the number of trig
+
 **Optional arguments** :
 ```
 -ses ses-011
 -show True
 -save path/to/save-data
+-count_vol False
 ```
 #### Example
 ``python ds_prep/physio/utils/get_info.py -indir /data/neuromod/DATA/cneuromod/friends/sourcedata/physio/ -sub sub-01 -ses ses-029 -save /scratch/flesp/physio_data/friends/``
