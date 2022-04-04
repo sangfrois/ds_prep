@@ -110,11 +110,11 @@ def neuromod_ppg_viz(indir, outdir, sub, sessions=None):
                 os.mkdir(f'{outdir}{sub}/{ses}')
                 print(f"Created output directory for {ses}")
             
-            signals.to_csv(f'{outdir}{sub}/{ses}/{sub}_{ses}_{fn}_physio-signals.tsv.gz', sep='\t', index=False,
+            signals.to_csv(f'{outdir}{sub}/{ses}/{fn}-signals.tsv.gz', sep='\t', index=False,
                            compression='gzip')
             print(f"Signals are saved with columns : {signals.columns}")
             
-            with open(f'{outdir}{sub}/{ses}/{sub}_{ses}_{fn}_physio-info.json', 'wb') as fp:
+            with open(f'{outdir}{sub}/{ses}/{fn}-info.json', 'wb') as fp:
                 pickle.dump(info_corrected, fp)
             print(f"Info are saved with these features : {info_corrected.keys()}")
                 

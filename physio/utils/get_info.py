@@ -2,6 +2,7 @@
 # !/usr/bin/env python -W ignore::DeprecationWarning
 """another util for neuromod phys data conversion."""
 import pprintpp
+import glob
 import sys
 from list_sub import list_sub
 import json
@@ -52,7 +53,7 @@ def volume_counter(root, subject, ses=None):
                                        root, subject, exp, file))  # resampling
 
             # initialize a df with TTL values over 4 (switch either ~0 or ~5)
-            query_df = bio_df[bio_df.iloc[:, 3] > 4]
+            query_df = bio_df[bio_df[bio_df.columns[3]] > 4]
 
             # Define session length - this list will be less
             # memory expensive to play with than dataframe
@@ -69,7 +70,6 @@ def volume_counter(root, subject, ses=None):
             parse_list = []
 
             # ascertain that session is longer than 3 min
-
             for idx in range(1, len(session)):
                 # define time diff between current successive trigger
                 time_delta = session[idx] - session[idx-1]
@@ -82,7 +82,13 @@ def volume_counter(root, subject, ses=None):
                     # adjust the segmentation with padding
                     # parse start is end of run
                     parse_list += [(parse_start, parse_end)]
-
+            if len(parse_list)==0:
+                runs=round((end-start)/fs/1.49+1)
+                if exp not in ses_runs:
+                    ses_runs[exp] = [runs]
+                else:
+                    ses_runs[exp].append([runs])
+                continue
             # Create tuples with the given indexes
             # First block is always from first trigger to first parse
             block1 = (start, parse_list[0][0])
@@ -110,7 +116,7 @@ def volume_counter(root, subject, ses=None):
 
 
 def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
-             save=None):
+             save=None, scanning_sheet=None):
     """
     Get all volumes taken for a sub.
 
@@ -133,6 +139,9 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
     save : path
         Defaults to None and will save at root. Specify where you want to save
         the dictionary in json format
+    scanning_sheet : path
+        Defaults to None and does not check when missing info. Specify where to
+        look for a scanning sheet
 
     Returns
     -------
@@ -155,69 +164,49 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
     # iterate through sessions and get _matches.tsv with list_sub dict
     for exp in ses_runs_matches:
         print(exp)
-        try:
-            df = read_csv(f"{root}/sourcedata/physio/{sub}/{exp}/"
-                          f"{ses_runs_matches[exp][0]}", sep='\t', header=None)
-        except errors.EmptyDataError:
-            print(f"sourcedata not co-registered properly for {exp}")
-            continue
-    # first item of the dictionary returned by list_sub is a tsv file
 
         # initialize a counter and a dictionary
-        idx = 1
         nb_expected_volumes_run = {}
         tasks=[]
-        # get _bold.json filename in the matches.tsv we just read
-        for filename in df.iloc[:, 0]:
-            # troubleshoot unexisting paths present in the tsv file
-            # -7 because the end is .nii.gz
-            if os.path.exists(f"{root}/{filename[:-7]}.json") is False:
-                try:
-                    # maybe there are runs to account for in the name
-                    # strip -11 because bold.nii.gz
-                    if os.path.exists(f"{root}/{filename[:-11]}"
-                                      "run-01_bold.json") is False:
-                        with open(f"{root}/{filename[:-11]}"
-                                  "run-02_bold.json") as f:
-                            bold = json.load(f)
-                    else:
-                        with open(f"{root}/{filename[:-11]}"
-                                  "run-01_bold.json") as f:
-                            bold = json.load(f)
-                # if there is no way to load the file, notify user
-                # NOTE : THIS HAS TO BE LOGGED ; SAVE THE LOG!
-                except:
-                    pprintpp.pprint(f'skipping :{root}{filename[:-7]}')
-                    continue
-            # if everything went well we should be alright with this filename
-            else:
-                with open(f"{root}/{filename[:-7]}.json") as f:
-                    bold = json.load(f)
-            # we want to GET THE NB OF VOLUMES in the _bold.json of a given run
-            try:
-                nb_expected_volumes_run[f'{idx:02d}'
-                                    ] = bold["time"
-                                             ]["samples"
-                                               ]["AcquisitionNumber"][-1]
-            except KeyError:
-                pprintpp.pprint(f"skipping {exp} because .json info non-existant")
-                continue
-
-            # not super elegant but does the trick - counts the nb of runs/ses
-            idx += 1
+        matches = glob.glob(f"{root}{sub}/{exp}/func/*bold.json")
+        matches.sort()
+        # iterate through _bold.json
+        for idx, filename in enumerate(matches):
             task = filename.rfind(f"{exp}_")+8
             task_end = filename.rfind("_")
             tasks += [filename[task:task_end]]
+            
+            # read metadata
+            with open(filename) as f:
+                bold = json.load(f)
+            # we want to GET THE NB OF VOLUMES in the _bold.json of a given run
+            try:
+                nb_expected_volumes_run[f'{idx+1:02d}'
+                                    ] = bold["time"
+                                             ]["samples"
+                                               ]["AcquisitionNumber"][-1]
+            # if it does not work, check scanning sheet or continue
+            except KeyError:
+                pprintpp.pprint(f"skipping {exp} because .json info non-existant")
+                if scanning_sheet is not None:
+                    pprintpp.pprint(f"checking scanning sheet for {sub}/{exp}")
+                    df_sheet=read_csv(scanning_sheet)
+                    vol_idx=df_sheet[df_sheet[sub]==f"p{sub[4:]}_friends{exp[4:]}"].index+idx
+                    vols=int(df_sheet["#volumes"].iloc[vol_idx])
+                    nb_expected_volumes_run[f'{idx+1:02d}']=vols
+                
+                else:
+                    continue
 
+            
         # print the thing to show progress
-        print(f"finished accessing json info for: {exp}")
         print(nb_expected_volumes_run)
         # push all info in run in dict
         nb_expected_runs[exp] = {}
         # the nb of expected volumes in each run of the session (embedded dict)
         nb_expected_runs[exp] = nb_expected_volumes_run
-        nb_expected_runs[exp]['expected_runs'] = len(df)
-        nb_expected_runs[exp]['processed_runs'] = idx-1  # counter is used here
+        nb_expected_runs[exp]['expected_runs'] = len(matches)
+        nb_expected_runs[exp]['processed_runs'] = idx  # counter is used here
         nb_expected_runs[exp]['task'] = tasks
         # save the name
         name = ses_info[exp]
@@ -252,14 +241,14 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                     # skip the session if we did not find the _bold.json
                     except KeyError:
                         continue
-            except IndexError:
+            except KeyError:
                 nb_expected_runs[exp]['recorded_triggers'] = float('nan')
-                print('Directory is empty or file is clobbered: ',
+                print('Directory is empty or file is clobbered/No triggers: ',
                       f"{root}sourcedata/physio/{sub}/{exp}/")
 
                 print(f"skipping :{exp} for task {filename}")
-        #if run_dict:
-            #print(run_dict)
+        if bool(run_dict):
+            print(run_dict)
         print('~'*30)
 
     if show:

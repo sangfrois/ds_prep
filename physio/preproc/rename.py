@@ -13,7 +13,7 @@ def _get_parser():
     """
     Parse command line inputs for this function.
 
-    Returns
+Returns
     -------
     parser.parse_args() : argparse dict
     Notes
@@ -37,6 +37,7 @@ def _get_parser():
     optional.add_argument('-ses', '--session',
                           dest='sessions',
                           type=str,
+                          nargs='*',
                           help='Specify session number, e.g. ses-001')
     return parser
 
@@ -64,7 +65,7 @@ def co_register_physio(scratch, sub, sessions=None):
     # define sessions
     if sessions is None:
         sessions = info.columns
-    else:
+    elif isinstance(sessions, list) is False:
         sessions = [sessions]
 
     # iterate through sesssions
@@ -88,10 +89,14 @@ def co_register_physio(scratch, sub, sessions=None):
         png = glob.glob(f"{scratch}{sub}/{ses}/code/conversion/*.png")
         png.sort()
 
+        # sanitize list of triggers
+        triggers = list(info[ses]['recorded_triggers'].values())
+        triggers = list(np.concatenate(triggers).flat)
+        
         # check sanity of info - expected runs is number of runs in BOLD sidecar
-        if info[ses]['expected_runs'] is not info[ses]['processed_runs']:
-            print(f"Expected number of runs {info[ses]['expected_runs']} "
-                  "does not match info from neuroimaging metadata")
+        #if info[ses]['expected_runs'] is not info[ses]['processed_runs']:
+        #    print(f"Expected number of runs {info[ses]['expected_runs']} "
+        #          "does not match info from neuroimaging metadata")
 
         if len(info[ses]['task']) is not info[ses]['expected_runs']:
             print("Number of tasks does not match expected number of runs")
@@ -104,12 +109,14 @@ def co_register_physio(scratch, sub, sessions=None):
         if len(info[ses]['task']) == 0:
             print(f"No task name listed ; skipping {ses}")
             continue
+        
+        if len(info[ses]['task'])==1:
+            this_one = triggers.index(info[ses]['01'])
+            to_be_del=list(range(0,len(triggers)))
+            to_be_del.remove(this_one)
 
         # if input is normal, then check co-registration
         else:
-            # sanitize list
-            triggers = list(info[ses]['recorded_triggers'].values())
-            triggers = list(np.concatenate(triggers).flat)
             
             to_be_del = []
             
@@ -119,34 +126,35 @@ def co_register_physio(scratch, sub, sessions=None):
                 if volumes < 400:
                     to_be_del.append(idx)
             
-            # these can be safely removed
-            for idx in to_be_del:
-                os.remove(tsv[idx])
-                os.remove(json[idx])
-                os.remove(log[idx])
-                os.remove(png[idx])
+        # these can be safely removed
+        for idx in to_be_del:
+            os.remove(tsv[idx])
+            os.remove(json[idx])
+            os.remove(log[idx])
+            os.remove(png[idx])
             
-            # theses are to be kept
-            triggers = np.delete(triggers, to_be_del)
-            tsv = np.delete(tsv, to_be_del)
-            json = np.delete(json, to_be_del)
-            log = np.delete(log, to_be_del)
-            png = np.delete(png, to_be_del)
+        # theses are to be kept
+        triggers = np.delete(triggers, to_be_del)
+        tsv = np.delete(tsv, to_be_del)
+        json = np.delete(json, to_be_del)
+        log = np.delete(log, to_be_del)
+        png = np.delete(png, to_be_del)
 
-            # check if number of volumes matches neuroimaging JSON sidecar
-            for idx, volumes in enumerate(triggers):
-                i = f"{idx+1:02d}"
-                print(info[ses][i]) 
-                if volumes != info[ses][i]:
-                    print(f"Recorded triggers info for {ses} does not match with "
-                          f"BOLD sidecar ({volumes} != {info[ses][i]})")
-                    continue
+        # check if number of volumes matches neuroimaging JSON sidecar
+        for idx, volumes in enumerate(triggers):
+            i = f"{idx+1:02d}"
+            print(info[ses][i]) 
+            if volumes != info[ses][i]:
+                print(f"Recorded triggers info for {ses} does not match with "
+                      f"BOLD sidecar ({volumes} != {info[ses][i]})\n"
+                      f"Skipping {ses}")
+                break
 
-                else:
-                    os.rename(tsv[idx],
-                              f"{scratch}{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.tsv.gz")
-                    os.rename(json[idx],
-                              f"{scratch}{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.json")
+            else:
+                os.rename(tsv[idx],
+                          f"{scratch}{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.tsv.gz")
+                os.rename(json[idx],
+                          f"{scratch}{sub}/{ses}/{sub}_{ses}_{info[ses]['task'][idx]}_physio.json")
 
 
 def _main(argv=None):

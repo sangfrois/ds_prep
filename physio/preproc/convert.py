@@ -6,6 +6,7 @@ from phys2bids.phys2bids import phys2bids
 import argparse
 import sys
 import pandas as pd
+import gc
 
 def _get_parser():
     """
@@ -37,8 +38,10 @@ def _get_parser():
                           dest='sub',
                           type=str,
                           help='Specify subject number, e.g. sub-01')
+    # optional
     optional.add_argument('-ses', '--session',
                           dest='sessions',
+                          nargs='*',
                           type=str,
                           help='Specify session number, e.g. ses-001')
     return parser
@@ -67,7 +70,7 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
     # define sessions
     if sessions is None:
         sessions = info.columns
-    else:
+    elif isinstance(sessions, list) is False:
         sessions = [sessions]
     # iterate through info
     for col in sessions:
@@ -122,6 +125,7 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
                     quiet=False,
                 )
             except AttributeError:
+                filename.sort()
                 for i in range(len(filename)):
                     print(i)
                     phys2bids(
@@ -143,6 +147,11 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
                         yml='',
                         debug=False,
                         quiet=False)
+
+            except TypeError:
+                print(f"No input file for {col}") 
+                continue
+        gc.collect()
         print("~"*30)
 
 def _main(argv=None):

@@ -102,6 +102,10 @@ def _get_parser2():
                           dest='save',
                           help='Specify if you want to save the dictionary',
                           default=False)
+    optional.add_argument('-scans', '--scanning-sheet',
+                          dest='scanning_sheet',
+                          help='Specify whether to look in a scanning sheet',
+                          default=None)
     parser._action_groups.append(optional)
 
     return parser

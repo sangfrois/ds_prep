@@ -9,7 +9,7 @@ import numpy as np
 # high-level processing utils
 from neurokit2 import eda_process, rsp_process, ecg_peaks,  ppg_findpeaks
 from systole.correction import correct_rr, correct_peaks
-from heartpy import process, enhance_peaks
+from heartpy import process, enhance_peaks, exceptions
 # signal utils
 from systole.utils import input_conversion
 from neurokit2.misc import as_vector, intervals_to_peaks
@@ -117,6 +117,7 @@ def neuromod_ppg_process(ppg_raw, sampling_rate=10000):
     print("HeartPy processing started")
     wd, m = process(ppg_cleaned, sampling_rate, reject_segmentwise=True,
                     interp_clipping=True, report_time=True)
+        
     peak_list_hp = _signal_from_indices(wd['peaklist_cor'], desired_length=len(ppg_cleaned))
     cumsum=0
     for i in wd['rejected_segments']:
