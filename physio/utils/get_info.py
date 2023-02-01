@@ -53,7 +53,7 @@ def volume_counter(root, subject, ses=None):
                                        root, subject, exp, file))  # resampling
 
             # initialize a df with TTL values over 4 (switch either ~0 or ~5)
-            query_df = bio_df[bio_df[bio_df.columns[3]] > 4]
+            query_df = bio_df[bio_df[bio_df.columns[2]] > 4]
 
             # Define session length - this list will be less
             # memory expensive to play with than dataframe

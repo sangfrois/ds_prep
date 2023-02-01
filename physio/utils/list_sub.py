@@ -70,7 +70,7 @@ def list_sub(root=None, sub=None, ses=None, type='.acq',save=False, show=False):
             raise Exception("Session path you gave does not exist")
 
     # list files in all sessions (or here, exp for experiments)
-    elif os.path.isdir(f'{root}{sub}/{ses_list[1]}') is True:
+    elif os.path.isdir(f'{root}{sub}/{ses_list[0]}') is True:
         for exp in ses_list:
             if exp.endswith('.json'):
                 continue

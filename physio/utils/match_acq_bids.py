@@ -51,8 +51,8 @@ def match_all_bolds(bids_path, biopac_path):
         except Exception as e:
             logging.error(f"read error for file: {acqk}")
 
-    sourcedata = bids_path / "sourcedata" / "physio"
-    sourcedata.mkdir(parents=True, exist_ok=True)
+    sourcedata = "/scratch/flesp/raw_physio_data/"
+    os.mkdir(sourcedata, parents=True, exist_ok=True)
     sessions_list = sorted(bids_path.glob("sub-*/ses-*"))
     for session in sessions_list:
         session_bids_path = session.relative_to(bids_path)

@@ -18,7 +18,7 @@ plt.rcParams['figure.figsize'] = (20.0, 12.0)
 plt.rcParams.update({'font.size': 16})
 
 
-def volume_counter(root, subject, ses=None, save_path=None):
+def volume_counter(root, subject, ses=None):
     """
     Volume counting for each run in a session.
 
@@ -32,8 +32,6 @@ def volume_counter(root, subject, ses=None, save_path=None):
     ses : string
         name of acquisition session. Optional workflow for specific experiment
         default is None
-    save_path: path
-        root directory of
     Returns:
     --------
     ses_runs: dictionary
@@ -42,12 +40,6 @@ def volume_counter(root, subject, ses=None, save_path=None):
     # Check directory
     if os.path.exists(root) is False:
         raise ValueError("Couldn't find the following directory: ",  root)
-    # handle no save_path given
-    if save_path is None:
-        save_path = root
-    # Check directory
-    elif os.path.exists(save_path) is False:
-        raise ValueError("Couldn't find the following directory: ", save_path)
 
     # List the files that have to be counted
     dirs = list_sub(root, subject, ses)
@@ -57,22 +49,24 @@ def volume_counter(root, subject, ses=None, save_path=None):
     # for this loop, exp refers to session's name,
     # avoiding confusion with ses argument
     for exp in dirs:
-        print(exp)
-        for file in dirs[exp]:
+        print("counting volumes in physio file for:", exp)
+        tr_list = [1.6, 2.635]
+        for file in sorted(dirs[exp]):
+            counter = 0
             # reading acq
+            print(file, tr_list)
             bio_df, fs = nk.read_acqknowledge(os.path.join(
                                        root, subject, exp, file))  # resampling
 
             # initialize a df with TTL values over 4 (switch either ~0 or ~5)
-            query_df = bio_df.query('TTL > 4')
+            query_df = bio_df[bio_df[bio_df.columns[2]] > 4]
 
             # Define session length - this list will be less
             # memory expensive to play with than dataframe
             session = list(query_df.index)
 
             # maximal TR - the time (2s) distance between two adjacent TTL
-            tr_period = fs * 2
-
+            tr_period = fs * 4
             # Define session length and adjust with padding
             start = int(session[0])
             end = int(session[-1])
@@ -81,7 +75,6 @@ def volume_counter(root, subject, ses=None, save_path=None):
             parse_list = []
 
             # ascertain that session is longer than 3 min
-
             for idx in range(1, len(session)):
                 # define time diff between current successive trigger
                 time_delta = session[idx] - session[idx-1]
@@ -94,15 +87,14 @@ def volume_counter(root, subject, ses=None, save_path=None):
                     # adjust the segmentation with padding
                     # parse start is end of run
                     parse_list += [(parse_start, parse_end)]
-
-            # saving the dataframe under specified dir and file name
-            # deal with unexisting paths
-            if os.path.exists(f"{save_path}{subject}") is False:
-                os.mkdir(Path(f"{save_path}{subject}"))
-
-            if os.path.exists(f"{save_path}{subject}/{exp}") is False:
-                os.mkdir(Path(f"{save_path}{subject}/{exp}"))
-
+                    
+            if len(parse_list)==0:
+                runs=round((end-start)/fs)
+                if exp not in ses_runs:
+                    ses_runs[exp] = [runs]
+                else:
+                    ses_runs[exp].append([runs])
+                continue
             # Create tuples with the given indexes
             # First block is always from first trigger to first parse
             block1 = (start, parse_list[0][0])
@@ -117,14 +109,20 @@ def volume_counter(root, subject, ses=None, save_path=None):
 
                 except IndexError:
                     runs.append((parse_list[i][1], end))
-
+            print(runs)
             # compute the number of trigger/volumes in the run
             for i in range(0, len(runs)):
-                runs[i] = round(((runs[i][1]-runs[i][0])/fs)/1.49)+1
+                if counter == 0 or counter == 1:
+                    tr = tr_list[0]
+                else:
+                    tr = tr_list[1]
+                runs[i] = round(((runs[i][1]-runs[i][0])/fs)/tr)+1
+                counter+=1
             if exp not in ses_runs:
-                ses_runs[exp] = runs
+                ses_runs[exp] = [runs]
             else:
                 ses_runs[exp].append(runs)
+
     return ses_runs
 
 def batch_parse(root, subject, ses=None, save_path=None):
@@ -171,20 +169,19 @@ def batch_parse(root, subject, ses=None, save_path=None):
             bio_df, fs = nk.read_acqknowledge(os.path.join(
                                        root, subject, exp, file))  # resampling
 
-            # initialize a df with TTL values over 4 (switch either ~0 or ~5)
-            query_df = bio_df.query('TTL > 4')
+           # initialize a df with TTL values over 4 (switch either ~0 or ~5)
+            session = list(bio_df.loc[bio_df['Custom, HLT100C - A 5'] > 4.9].index)
 
             # Define session length - this list will be less
             # memory expensive to play with than dataframe
-            session = list(query_df.index)
+            # session = list(query_df.index)
 
             # maximal TR - the time (2s) distance between two adjacent TTL
-            tr_period = fs * 2
+            tr_period = fs * 10
 
             # Define session length and adjust with padding
-            padding = fs * 9
-            start = int(session[0]-padding)
-            end = int(session[-1]+padding)
+            start = int(session[0])
+            end = int(session[-1])
 
             parse_list = []
 
