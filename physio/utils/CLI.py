@@ -89,6 +89,10 @@ def _get_parser2():
                           help='Specify alongside \"-heur\". Code of '
                                'session to process.',
                           default=None)
+    optional.add_argument('-count_vol', '--count_volumes_biopac',
+                          dest='count_vol',
+                          help='Specify whether you want to count the triggers',
+                          default=False)
 
     optional.add_argument('-show', '--show-dict',
                           dest='show',
@@ -98,6 +102,10 @@ def _get_parser2():
                           dest='save',
                           help='Specify if you want to save the dictionary',
                           default=False)
+    optional.add_argument('-scans', '--scanning-sheet',
+                          dest='scanning_sheet',
+                          help='Specify whether to look in a scanning sheet',
+                          default=None)
     parser._action_groups.append(optional)
 
     return parser

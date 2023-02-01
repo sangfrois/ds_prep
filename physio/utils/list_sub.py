@@ -2,7 +2,7 @@
 # !/usr/bin/env python
 """CLI for physio utils."""
 
-
+import pprintpp
 import os
 import logging
 from CLI import _get_parser
@@ -12,7 +12,7 @@ import sys
 LGR = logging.getLogger(__name__)
 
 
-def list_sub(root=None, sub=None, ses=None, type='.acq', show=False):
+def list_sub(root=None, sub=None, ses=None, type='.acq',save=False, show=False):
     """
     List a subject's files.
 
@@ -40,20 +40,18 @@ def list_sub(root=None, sub=None, ses=None, type='.acq', show=False):
         list of files by their name
 
     Example :
-    >>> ses_runs = list_sub(root = "/home/user/dataset", sub = "sub-01")
+    >>> ses_runs = list_sub(root = "/home/user/dataset/", sub = "sub-01")
     """
     # Check the subject's
-    if os.path.exists(os.path.join(root, sub)) is False:
+    if os.path.isdir(os.path.join(root, sub)) is False:
         raise ValueError("Couldn't find the subject's path \n",
                          os.path.join(root, sub))
     file_list = []
     ses_runs = {}
-    ses_list = os.listdir(os.path.join(root, sub))
-
+    ses_list = os.listdir(f'{root}{sub}')
     # list files in only one session
     if ses is not None:
-        dir = os.path.join(root, sub, ses)
-
+        dir = f'{root}{sub}/{ses}'
         # if the path exists, list .acq files
         if os.path.exists(dir):
             for filename in os.listdir(dir):
@@ -72,23 +70,25 @@ def list_sub(root=None, sub=None, ses=None, type='.acq', show=False):
             raise Exception("Session path you gave does not exist")
 
     # list files in all sessions (or here, exp for experiments)
-    elif os.path.isdir(os.path.join(root, sub, ses_list[0])) is True:
+    elif os.path.isdir(f'{root}{sub}/{ses_list[0]}') is True:
         for exp in ses_list:
+            if exp.endswith('.json'):
+                continue
             # re-initialize the list
             file_list = []
             # iterate through directory's content
-            for filename in os.listdir(os.path.join(root, sub, exp)):
+            for filename in os.listdir(f'{root}{sub}/{exp}'):
+                
                 if filename.endswith(type):
                     file_list += [filename]
 
             # save the file_list as dict item
             ses_runs[exp] = file_list
-
+       
         # display the lists (optional)
         if show:
-            for exp in ses_runs:
-                print(f"list of files for session {exp}: {ses_runs[exp]}")
-
+               pprintpp.pprint(ses_runs)
+        return ses_runs
     # list files in a sub directory without sessions
     else:
         # push filenames in a list
@@ -100,6 +100,8 @@ def list_sub(root=None, sub=None, ses=None, type='.acq', show=False):
 
         # return a dictionary of sessions each containing a list of files
         return ses_runs
+    if save is not False:
+        print(f'write the rest of code to save where specified:{save}')
 
 #  Get arguments
 

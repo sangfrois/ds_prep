@@ -197,9 +197,8 @@ def write_func_job(layout, subject, session, args):
             )
             + "_bold.dtseries.nii",
         )
-        bold_deriv = os.path.lexists(preproc_path) and os.path.lexists(
-            dtseries_path
-        )  # test if file or symlink (even broken if git-annex and not pulled)
+        # test if file or symlink (even broken if git-annex and not pulled)
+        bold_deriv = os.path.lexists(preproc_path) and os.path.lexists(dtseries_path)
         if bold_deriv:
             print(
                 f"found existing derivatives for {bold_run.path} : {preproc_path}, {dtseries_path}"
@@ -222,7 +221,7 @@ def write_func_job(layout, subject, session, args):
     bids_filters_path = os.path.join(
         layout.root,
         SLURM_JOB_DIR,
-        f"{job_specs['jobname']}_bids_filters.json")
+        f"{job_specs['jobname']}_bids_filters.json"
     )
 
     pybids_cache_path = os.path.join(layout.root, PYBIDS_CACHE_PATH)
@@ -364,19 +363,6 @@ def main():
 
     pybids_cache_path = os.path.join(args.bids_path, PYBIDS_CACHE_PATH)
 
-    print(dict(
-        path=args.bids_path,
-        database_path=pybids_cache_path,
-        reset_database=args.force_reindex,
-        ignore=(
-            "code",
-            "stimuli",
-            "sourcedata",
-            "models",
-            re.compile(r"^\."),
-        ) + load_bidsignore(args.bids_path),
-    ))
-    
     layout = bids.BIDSLayout(
         args.bids_path,
         database_path=pybids_cache_path,
