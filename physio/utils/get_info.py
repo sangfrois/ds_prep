@@ -51,9 +51,14 @@ def volume_counter(root, subject, ses=None):
             # reading acq
             bio_df, fs = read_acqknowledge(os.path.join(
                                        root, subject, exp, file))  # resampling
+            print(bio_df.columns)
+            if 'Custom, HLT100C - A 5' in bio_df.columns:
+                trig_ch = 'Custom, HLT100C - A 5'
+            else:
+                trig_ch = 'TTL'
 
             # initialize a df with TTL values over 4 (switch either ~0 or ~5)
-            query_df = bio_df[bio_df[bio_df.columns[2]] > 4]
+            query_df = bio_df[bio_df[trig_ch] > 4]
 
             # Define session length - this list will be less
             # memory expensive to play with than dataframe
@@ -63,7 +68,11 @@ def volume_counter(root, subject, ses=None):
             tr_period = fs * 2
 
             # Define session length and adjust with padding
-            start = int(session[0])
+            try:
+                start = int(session[0])
+            except IndexError:
+                print("There may be no triggers in the TTL channel. Skipping!")
+                continue
             end = int(session[-1])
 
             # initialize list of sample index to compute nb of volumes per run
@@ -112,7 +121,7 @@ def volume_counter(root, subject, ses=None):
             else:
                 ses_runs[exp].append(runs)
 
-    return ses_runs
+    return ses_runs, bio_df.columns
 
 
 def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
@@ -162,14 +171,15 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
     nb_expected_runs = {}
 
     # iterate through sessions and get _matches.tsv with list_sub dict
-    for exp in ses_runs_matches:
+    for exp in sorted(ses_runs_matches):
         print(exp)
+        if ses_info[exp] == []:
+            continue
 
         # initialize a counter and a dictionary
         nb_expected_volumes_run = {}
         tasks=[]
-        matches = glob.glob(f"{root}{sub}/{exp}/func/*bold.json")
-        matches.sort()
+        matches = sorted(glob.glob(f"{root}{sub}/{exp}/func/*bold.json"))
         # iterate through _bold.json
         for idx, filename in enumerate(matches):
             task = filename.rfind(f"{exp}_")+8
@@ -206,10 +216,12 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
         # the nb of expected volumes in each run of the session (embedded dict)
         nb_expected_runs[exp] = nb_expected_volumes_run
         nb_expected_runs[exp]['expected_runs'] = len(matches)
-        nb_expected_runs[exp]['processed_runs'] = idx  # counter is used here
+        # nb_expected_runs[exp]['processed_runs'] = idx  # counter is used here
         nb_expected_runs[exp]['task'] = tasks
+
         # save the name
         name = ses_info[exp]
+        print(name)
         if name:
             name.reverse()
             nb_expected_runs[exp]['in_file'] = name
@@ -227,7 +239,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
                 else:
                     # count the triggers in physfile otherwise
                     try:
-                        vol_in_biopac = volume_counter(
+                        vol_in_biopac, ch_names = volume_counter(
                                     f"{root}sourcedata/physio/", sub, ses=exp)
                         print("finished counting volumes in physio file for:",
                               exp)
@@ -237,6 +249,7 @@ def get_info(root=None, sub=None, ses=None, count_vol=False, show=True,
 
                         nb_expected_runs[exp][
                                       'recorded_triggers'] = run_dict
+                        nb_expected_runs[exp]['ch_names'] = list(ch_names)
                         
                     # skip the session if we did not find the _bold.json
                     except KeyError:

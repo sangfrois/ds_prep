@@ -6,7 +6,10 @@ from phys2bids.phys2bids import phys2bids
 import argparse
 import sys
 import pandas as pd
+import numpy as np
 import gc
+import glob
+import os
 
 def _get_parser():
     """
@@ -46,7 +49,7 @@ def _get_parser():
                           help='Specify session number, e.g. ses-001')
     return parser
 
-def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
+def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None, overwrite=False):
     """
     Phys2Bids conversion for one subject data
 
@@ -67,38 +70,64 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
     """
     # fetch info
     info = pd.read_json(f"{scratch}{sub}/{sub}_volumes_all-ses-runs.json")
+    gc.enable()
     # define sessions
     if sessions is None:
-        sessions = info.columns
+        sessions = sorted(list(info.columns))
+        if overwrite is False:
+            existing = [str(d[-8:-1]) for d in glob.glob(f"{scratch}{sub}/*/")]
+            setA = set(sessions)
+            # Get new set with elements that are only in sessions but not in existing
+            sessions = sorted(list(setA.difference(existing)))
+
+            
     elif isinstance(sessions, list) is False:
         sessions = [sessions]
     # iterate through info
     for col in sessions:
-        # skip empty sessions
         if info[col] is None:
             continue
         print(col)
+        ch_list = []
+        try:
+            info[col]['ch_names']
+            for ch in info[col]['ch_names']:
+                if 'EDA' in ch:
+                    ch_list.append('EDA')
+                elif 'ECG' in ch:
+                    ch_list.append('ECG')
+                elif 'PPG' in ch:
+                    ch_list.append('PPG')
+                elif 'A 5' in ch or 'TTL' in ch:
+                    ch_list.append('TTL')
+                else:
+                    ch_list.append('RSP')
+            trig_idx = ch_list.index('TTL')+1
+        except:
+            info[col].update({'ch_names': ["EDA", "PPG", "ECG", "TTL", "RSP"]})
+        
 
         # Iterate through files in each session and run phys2bids
         filename = info[col]['in_file']
+        
         if filename is list:
             for i in range(len(filename)-1):
                 phys2bids(
                         filename[i],
                         info=False,
-                        indir=f'{sourcedata}/{sub}/{col}/',
-                        outdir=f'{scratch}/{sub}/{col}',
+                        indir=f'{sourcedata}{sub}/{col}/',
+                        outdir=f'{scratch}{sub}/{col}',
                         heur_file=None,
                         sub=sub[-2:],
                         ses=col[-3:],
-                        chtrig=4,
+                        chtrig=trig_idx,
                         chsel=None,
                         num_timepoints_expected=info[col]['recorded_triggers'][
                                                           f'run-0{i+1}'],
                         tr=1.49,
                         thr=4,
-                        pad=9,
-                        ch_name=["EDA", "PPG", "ECG", "TTL", "RSP"],
+                        pad=0,
+                        ch_name=ch_list,
                         yml='',
                         debug=False,
                         quiet=False)
@@ -107,19 +136,19 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
                 phys2bids(
                     filename,
                     info=False,
-                    indir=f'{sourcedata}physio/{sub}/{col}/',
-                    outdir=f'{scratch}/{sub}/{col}',
+                    indir=f'{sourcedata}{sub}/{col}/',
+                    outdir=f'{scratch}{sub}/{col}',
                     heur_file=None,
                     sub=sub[-2:],
                     ses=col[-3:],
-                    chtrig=4,
+                    chtrig=ch_list.index('TTL'),
                     chsel=None,
                     num_timepoints_expected=info[col]['recorded_triggers'][
                                                       'run-01'],
                     tr=1.49,
                     thr=4,
-                    pad=9,
-                    ch_name=["EDA", "PPG", "ECG", "TTL", "RSP"],
+                    pad=0,
+                    ch_name=trig_idx,
                     yml='',
                     debug=False,
                     quiet=False,
@@ -131,19 +160,19 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
                     phys2bids(
                         filename[i],
                         info=False,
-                        indir=f'{sourcedata}/{sub}/{col}/',
-                        outdir=f'{scratch}/{sub}/{col}',
+                        indir=f'{sourcedata}{sub}/{col}/',
+                        outdir=f'{scratch}{sub}/{col}',
                         heur_file=None,
                         sub=sub[-2:],
                         ses=col[-3:],
-                        chtrig=4,
+                        chtrig=trig_idx,
                         chsel=None,
                         num_timepoints_expected=info[col]['recorded_triggers'][
                                                           f'run-0{i+1}'],
                         tr=1.49,
                         thr=4,
-                        pad=9,
-                        ch_name=["EDA", "PPG", "ECG", "TTL", "RSP"],
+                        pad=0,
+                        ch_name=ch_list,
                         yml='',
                         debug=False,
                         quiet=False)
@@ -151,8 +180,7 @@ def neuromod_phys2bids(sourcedata, scratch, sub, sessions=None):
             except TypeError:
                 print(f"No input file for {col}") 
                 continue
-        gc.collect()
-        print("~"*30)
+        print("~"*80)
 
 def _main(argv=None):
     options = _get_parser().parse_args(argv)
