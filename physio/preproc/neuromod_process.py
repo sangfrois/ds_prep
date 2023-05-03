@@ -12,7 +12,7 @@ from systole.correction import correct_rr, correct_peaks
 from heartpy import process, enhance_peaks, exceptions
 # signal utils
 from systole.utils import input_conversion
-from neurokit2.misc import as_vector, intervals_to_peaks
+from neurokit2.misc import as_vector
 from neurokit2 import signal_rate, signal_fixpeaks, signal_filter
 from neurokit2.signal.signal_formatpeaks import _signal_from_indices
 # home brewed cleaning utils
